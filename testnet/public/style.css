@@ -1,0 +1,492 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+:root {
+  color-scheme: dark;
+  --bg: #14131c;
+  --panel: #201e2b;
+  --muted: #a5a0b6;
+  --line: #353140;
+  --purple: #b793ff;
+  --green: #2be0ac;
+  --red: #ff617f;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: #f4f1fa;
+  font:
+    15px "DM Sans",
+    system-ui;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: #282434;
+  color: inherit;
+  border-radius: 14px;
+  padding: 14px 18px;
+  transition:
+    background 0.18s,
+    transform 0.18s;
+}
+button:hover:not(:disabled) {
+  background: #3b3054;
+  transform: translateY(-1px);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--purple);
+  outline-offset: 4px;
+}
+a {
+  color: var(--purple);
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 25px 4%;
+  gap: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font:
+    700 26px "Space Grotesk",
+    system-ui;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #eee9fb;
+}
+.brand > span:first-child {
+  font-size: 32px;
+  background: #8062b2;
+  padding: 12px;
+  border-radius: 18px;
+}
+.near {
+  font: 600 11px system-ui;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.motto {
+  font:
+    700 21px "Space Grotesk",
+    system-ui;
+}
+.motto em {
+  color: var(--purple);
+  font-style: normal;
+}
+.balance {
+  text-align: right;
+  min-width: 230px;
+}
+.balance small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--purple);
+}
+.balance strong {
+  display: block;
+  font:
+    600 38px "Space Grotesk",
+    system-ui;
+  margin-top: 5px;
+}
+.notice {
+  padding: 12px 4%;
+  font-size: 12px;
+  color: var(--muted);
+  background: #1a1725;
+}
+.notice span {
+  float: right;
+}
+.notice i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 100%;
+  background: var(--purple);
+  margin-right: 8px;
+}
+main {
+  padding: 24px 4%;
+}
+nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--line);
+  padding: 5px;
+  border-radius: 15px;
+}
+.tabs button {
+  border: 0;
+  min-width: 100px;
+  background: none;
+}
+.tabs button[aria-pressed="true"],
+.choices button[aria-pressed="true"] {
+  background: var(--purple);
+  color: #211630;
+  font-weight: 700;
+}
+.circle {
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  font-size: 20px;
+  color: var(--purple);
+}
+#ledger {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: 28px;
+}
+.market,
+.controls {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: linear-gradient(140deg, #201e2b, #191720);
+  padding: 26px;
+}
+.market-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.market small,
+.eyebrow {
+  color: var(--purple);
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+h1 {
+  font:
+    500 21px "Space Grotesk",
+    system-ui;
+  margin: 10px 0;
+}
+h1 span {
+  margin-left: 10px;
+  color: var(--purple);
+}
+.tag {
+  font-size: 9px;
+  letter-spacing: 1px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--muted);
+}
+#performance {
+  text-align: center;
+  padding: 32px 0 5px;
+}
+h2 {
+  font:
+    600 36px "Space Grotesk",
+    system-ui;
+  margin: 12px 0;
+}
+p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+#performance h2.live {
+  font-size: 60px;
+  margin: 5px;
+}
+.positive {
+  color: var(--green);
+}
+.negative {
+  color: var(--red);
+}
+.chart {
+  height: 42vh;
+  min-height: 260px;
+  position: relative;
+}
+canvas {
+  width: 100%;
+  height: calc(100% - 25px);
+  display: block;
+}
+.chart-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+}
+#exit {
+  width: 100%;
+  background: var(--green);
+  color: #082c23;
+  font-size: 30px;
+  font-weight: 700;
+  margin-top: 20px;
+}
+#exit small {
+  display: block;
+  color: #123c31;
+  font-size: 12px;
+  letter-spacing: 0;
+  margin-top: 4px;
+}
+.hands {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 22px 0;
+}
+.hands button {
+  height: 174px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.hands span {
+  font-size: 62px;
+  filter: grayscale(1) sepia(1) hue-rotate(200deg);
+}
+.hands strong {
+  font:
+    700 26px "Space Grotesk",
+    system-ui;
+  color: var(--green);
+  margin: 8px 0;
+}
+.hands button:last-child strong {
+  color: var(--red);
+}
+.hands small {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+}
+legend {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.choices {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: #15131c;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+.choices button {
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 12px 5px;
+}
+#status {
+  font-size: 13px;
+  color: var(--purple);
+}
+details {
+  font-size: 12px;
+  color: var(--muted);
+  padding-bottom: 16px;
+}
+summary {
+  cursor: pointer;
+}
+.history {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 5px;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+}
+h3 span {
+  color: var(--purple);
+}
+.trade {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.trade small {
+  color: var(--muted);
+  display: block;
+  margin-top: 5px;
+}
+.trade b {
+  font-size: 20px;
+}
+.primary {
+  background: var(--purple);
+  color: #211630;
+  width: 100%;
+  margin-top: 12px;
+  font-weight: 700;
+}
+.secondary {
+  width: 100%;
+  margin-top: 12px;
+}
+.lp-stats span {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.lp-stats b {
+  color: #eee;
+}
+#lp-controls > small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+footer {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 4%;
+  font-size: 11px;
+  color: var(--muted);
+}
+footer button {
+  font-size: 11px;
+  padding: 8px;
+}
+#explanation {
+  padding: 20px;
+  background: #30263f;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  line-height: 1.8;
+}
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4a2235;
+  color: white;
+  padding: 18px 28px;
+  border-radius: 14px;
+  box-shadow: 0 10px 50px #0008;
+  max-width: 90%;
+  z-index: 4;
+}
+[hidden] {
+  display: none !important;
+}
+.pulse {
+  animation: pulse 0.4s;
+}
+@keyframes pulse {
+  50% {
+    text-shadow: 0 0 20px #c69fff;
+    color: white;
+  }
+}
+@media (max-width: 900px) {
+  .motto {
+    display: none;
+  }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .notice span {
+    display: none;
+  }
+  .market {
+    padding: 18px;
+  }
+  .controls {
+    padding: 22px;
+  }
+  .chart {
+    height: 38vh;
+  }
+  header {
+    padding: 18px;
+  }
+  .brand {
+    font-size: 19px;
+  }
+  .balance {
+    min-width: 0;
+    padding: 10px;
+  }
+  .balance strong {
+    font-size: 27px;
+  }
+  .balance small {
+    font-size: 8px;
+  }
+  .near {
+    display: none;
+  }
+  footer {
+    flex-wrap: wrap;
+  }
+  #ledger {
+    max-width: 110px;
+    text-align: right;
+  }
+  .tag {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+#connect { width: auto; max-width: 360px; overflow-wrap: anywhere; }
+nav { flex-wrap: wrap; }

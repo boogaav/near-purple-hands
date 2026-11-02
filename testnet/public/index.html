@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Purple Hands · NEAR testnet</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/" aria-label="Purple Hands home"
+        ><span>🙌</span> purplehands<span class="near">NEAR</span></a
+      >
+      <div class="motto">
+        MY HANDS ARE CLEAN.<br /><em>THEY’RE JUST PURPLE.</em>
+      </div>
+      <button id="topup" class="balance">
+        <small>TEST TRADING BALANCE ＋</small><strong id="balance">—</strong>
+      </button>
+    </header>
+    <div class="notice" role="status">
+      <i></i> NEAR TESTNET · Mock USDC only · Live BTC feed
+      <span>Native NEAR contract · V5-derived engine</span>
+    </div>
+    <main>
+      <nav><button id="connect" class="primary">Connect NEAR wallet</button>
+        <div class="tabs">
+          <button id="trader" aria-pressed="true">Trader</button
+          ><button id="lp" aria-pressed="false">LP</button>
+        </div>
+        <button
+          id="help"
+          aria-expanded="false"
+          aria-controls="explanation"
+          class="circle"
+        >
+          ?</button
+        ><span id="ledger">Checking ledger…</span>
+      </nav>
+      <aside id="explanation" hidden>
+        Traders and liquidity providers take opposite sides. Each trade reserves
+        matching LP capital; gains and losses are capped at the stake. Profit
+        rake: 10%. Entry fee: 1% to LPs. Early exits under 30s: 1%. Keeper
+        budget: $0.14, unused amounts refunded. Testnet prototype. Mock tokens have no value.
+      </aside>
+      <div class="layout">
+        <section class="market">
+          <div class="market-heading">
+            <div>
+              <small>BTC / MOCK USDC</small>
+              <h1>Bitcoin <span id="price">—</span></h1>
+            </div>
+            <span class="tag">COINBASE · TEST ORACLE</span>
+          </div>
+          <div id="performance">
+            <small>CHOOSE YOUR DIRECTION</small>
+            <h2>Make your move.</h2>
+            <p>Matching capital. Transparent outcomes.</p>
+          </div>
+          <div class="chart">
+            <canvas
+              id="chart"
+              aria-label="Testnet Bitcoin price, entry and exit chart"
+              role="img"
+            ></canvas>
+            <div class="chart-footer">
+              <span>Entry ↓ · Exit ↑</span
+              ><span>Last 2 minutes · published oracle ticks</span>
+            </div>
+          </div>
+          <div id="exit-panel" hidden>
+            <button id="exit">
+              EXIT <small id="exit-caption">Request settlement</small>
+            </button>
+          </div>
+        </section>
+        <section class="controls">
+          <div id="trading-controls">
+            <div class="eyebrow">TRADE CONTROLS</div><p>Connect → Register → Load 100 mock USDC using the balance button. Test tokens must already be in your wallet.</p>
+            <div class="hands">
+              <button id="long" disabled>
+                <span>✋</span><strong>UP ↗</strong
+                ><small>OPEN LONG</small></button
+              ><button id="short" disabled>
+                <span>🤚</span><strong>DOWN ↘</strong><small>OPEN SHORT</small>
+              </button>
+            </div>
+            <fieldset>
+              <legend>Your stake</legend>
+              <div class="choices" id="stakes">
+                <button data-value="10" aria-pressed="true">$10</button
+                ><button data-value="50" aria-pressed="false">$50</button
+                ><button data-value="100" aria-pressed="false">$100</button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Leverage</legend>
+              <div class="choices" id="leverages">
+                <button data-value="100" aria-pressed="false">100×</button
+                ><button data-value="500" aria-pressed="false">500×</button
+                ><button data-value="1000" aria-pressed="true">1,000×</button>
+              </div>
+            </fieldset>
+            <p id="status" role="status" aria-live="polite">Ready to trade</p>
+            <details>
+              <summary>Fees & execution</summary>
+              <p>
+                1% entry fee, 10% winner’s profit rake, 1% early exit fee before
+                30s. Two NEAR blocks before fills; execution uses the price
+                at fill. Open and close bounds are ±1%. Network gas is paid in test NEAR.
+              </p>
+            </details>
+          </div>
+          <div id="lp-controls" hidden>
+            <div class="eyebrow">LIQUIDITY PROVIDER</div>
+            <h2 id="lp-value">—</h2>
+            <p>Your share of the pool</p>
+            <div class="lp-stats">
+              <span>Available to withdraw <b id="lp-available">—</b></span
+              ><span>Pool capital <b id="capital">—</b></span
+              ><span>Reserved for trades <b id="reserved">—</b></span
+              ><span>Realized pool P&L* <b id="pool-pnl">—</b></span>
+            </div>
+            <button class="primary" id="lp-add">＋ Add $100 liquidity</button
+            ><button class="secondary" id="lp-remove">
+              − Request 10% removal</button
+            ><button class="primary" id="lp-claim" hidden>
+              Claim to trading balance
+            </button>
+            <p id="lp-status" role="status"></p>
+            <small
+              >*Includes fees; excludes deposits/removals. Removal notice: 24 hours. Deposits and claims wait for
+              all trades to settle.</small
+            >
+          </div>
+          <div class="history">
+            <h3>Your journeys <span>↙ ↗</span></h3>
+            <div id="history"><p>No closed trades yet.</p></div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <footer>
+      <span>purplehands.wtf · NEAR fork · Testnet preview</span
+      ><button id="withdraw">Withdraw available mock USDC</button><button id="reset">Sign out</button
+      ><a href="https://docs.near.org/" target="_blank" rel="noopener"
+        >NEAR documentation ↗</a
+      >
+    </footer>
+    <div id="toast" role="alert" hidden></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

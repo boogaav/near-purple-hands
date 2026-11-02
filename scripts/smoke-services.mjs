@@ -1,0 +1,15 @@
+import {client,ids} from './testnet-client.mjs';
+import {writeFile} from 'node:fs/promises';
+const {state,call}=await client(['trader']);
+const wait=async predicate=>{for(let i=0;i<40;i++){const s=await state();if(predicate(s))return s;await new Promise(r=>setTimeout(r,1500));}throw Error('Timed out waiting for automatic keeper');};
+let s=await wait(s=>!s.paused&&Date.now()/1000-s.price_at<15);
+if(s.positions[ids.trader]) throw Error('Fixture already has position; refusing duplicate');
+const bounds=s=>({min_price:String(Math.floor(s.price*.99)),max_price:String(Math.ceil(s.price*1.01))});
+const entry=await call('trader',ids.exchange,'request_open',{owner:ids.trader,long:true,margin:'10000000',leverage:100,...bounds(s)});
+s=await wait(s=>s.positions[ids.trader]?.entry>0);
+const filled=s.positions[ids.trader];
+const exit=await call('trader',ids.exchange,'request_close',{owner:ids.trader,...bounds(s)});
+s=await wait(s=>!s.positions[ids.trader]);
+const report={at:new Date().toISOString(),passed:true,source:'Coinbase BTC-USD trusted test oracle',entryRequest:entry.transaction.hash,exitRequest:exit.transaction.hash,positionId:filled.id,entry:filled.entry,remainingPositions:Object.keys(s.positions).length};
+await writeFile(new URL('../deployments/services-testnet.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
+console.log(report);

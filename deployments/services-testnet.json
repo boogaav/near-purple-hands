@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-02T14:40:58.891Z",
+  "passed": true,
+  "source": "Coinbase BTC-USD trusted test oracle",
+  "entryRequest": "HYzCSs2UvvGj6GJ3vms7Zb7bwzRdcJqmdfYnXENWzh8a",
+  "exitRequest": "6FxPQymCVwUyNEfM9ChQSRwErrKNBgzfLhnyAbY9PchA",
+  "positionId": 2,
+  "entry": 77823780000,
+  "remainingPositions": 0,
+  "keeperTransactions": [
+    {
+      "method": "fill_open",
+      "hash": "4FQP7spAJREyPGfUjdMUa17QUb4Yvoc2rPyfrtyzFHBC"
+    },
+    {
+      "method": "settle",
+      "hash": "CEZ8fPyaFWgkgNx84hAHrwyyQYFiZL9dFQe5Au2BhZan"
+    }
+  ],
+  "hosting": "operator laptop; not always-on"
+}

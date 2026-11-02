@@ -1,3 +1,7 @@
+## Connected NEAR testnet preview
+
+The wallet frontend, live trusted BTC oracle and automatic keeper are implemented. See [testnet app instructions](docs/TESTNET-APP.md). Run `npm run api:testnet`, `npm run worker:testnet` and `npm run dev:testnet`, then open http://127.0.0.1:8891. Mock tokens only; services currently run on the operator laptop. `npm run dev` remains the separate offline simulation.
+
 # NEAR Purple Hands
 
 A native Rust/NEAR fork of Purple Hands’ V5 trading design. Traders open capped BTC positions against a fully reserved LP pool. The browser product is a **local demo**. Native contracts are now deployed to **NEAR testnet**, using a mock token and separate fixture accounts. No domain cutover, real USDC, bridge or mainnet transaction is configured.
@@ -11,7 +15,7 @@ A native Rust/NEAR fork of Purple Hands’ V5 trading design. Traders open cappe
 - [Exchange explorer](https://testnet.nearblocks.io/address/exchange.near-purple-hands-20261102.testnet)
 - Deployment hashes and public transaction receipts: [testnet manifest](deployments/testnet.json).
 - Run `npm run verify:testnet` for read-only bytecode/finality/ledger checks.
-- Entries remain paused after the smoke test. There is no always-on oracle or testnet wallet UI yet.
+- The connected testnet UI is available locally; its healthy oracle/keeper enables entries. Always-on hosting remains to be configured.
 
 Private testnet credentials stay in the Git-ignored `.local/testnet-keys/` directory; never upload it. The browser demo below is still simulated and does not use these contracts.
 
@@ -69,7 +73,7 @@ See [architecture and boundaries](docs/ARCHITECTURE.md), [V5 port differences](d
 
 Target brand/domain: **purplehands.wtf**. Live Yellowhands remains independent. No DNS or current website mapping is changed by this repository or its scripts. Before a public preview, create a separate deployment and move only Purple Hands’ domain; never replace the shared production project serving Yellowhands. GitHub is source hosting, not a deployed backend.
 
-Next stage: testnet wallet integration + robust oracle adapter + durable event indexer, then independent security review before any real-funds deployment. There is no mainnet deploy script.
+Next stage: tester wallet verification, always-on hosting, decentralized oracle design and complete durable event indexing, then independent security review before any real-funds deployment. There is no mainnet deploy script.
 
 ## Hackathon provenance
 

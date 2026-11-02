@@ -10,7 +10,12 @@
     "test:sandbox": "node tests/sandbox.mjs",
     "deploy:testnet": "node scripts/deploy-testnet.mjs",
     "smoke:testnet": "node scripts/smoke-testnet.mjs",
-    "verify:testnet": "node scripts/verify-testnet.mjs"
+    "verify:testnet": "node scripts/verify-testnet.mjs",
+    "dev:testnet": "vite --config testnet/vite.config.js",
+    "build:testnet": "vite build --config testnet/vite.config.js",
+    "api:testnet": "node testnet/server.mjs",
+    "worker:testnet": "node testnet/worker.mjs",
+    "test:services": "node --test tests/testnet-services.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -18,9 +23,14 @@
   "devDependencies": {
     "binaryen": "125.0.0",
     "near-api-js": "5.1.1",
-    "near-workspaces": "5.0.0"
+    "near-workspaces": "5.0.0",
+    "vite": "8.3.5"
   },
   "overrides": {
     "tar": "7.5.22"
+  },
+  "dependencies": {
+    "@near-wallet-selector/core": "10.1.4",
+    "@near-wallet-selector/my-near-wallet": "10.1.4"
   }
 }

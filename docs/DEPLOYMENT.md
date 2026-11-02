@@ -1,6 +1,6 @@
 # Deployment handoff
 
-Current stage: native exchange and mock token deployed to NEAR testnet on 2026-11-02. Requested eventual domain: purplehands.wtf. The browser remains a local simulator.
+Current stage: native exchange and mock token deployed to NEAR testnet on 2026-11-02. Requested eventual domain: purplehands.wtf. A separate connected testnet frontend is available at localhost:8891; see TESTNET-APP.md.
 
 The user explicitly approved the account/key plan in `deployments/testnet-plan.json`. The deployment uses only faucet-funded testnet accounts. `deployments/testnet.json` records public accounts, code hashes, receipts, and smoke-test outcome. Keys are stored locally in `.local/testnet-keys/` with directory mode 0700 and file mode 0600; they are excluded from Git.
 
@@ -10,15 +10,12 @@ Commands:
 - `npm run smoke:testnet`: mock-token deposit, LP funding, delayed open/close, withdrawal and ledger checks. Re-pauses entries on exit. Skips when the manifest already records success.
 - `npm run verify:testnet`: public read-only code, finality and ledger verification; needs no keys.
 
-The exchange is left paused after testing. It has a trusted test oracle, not a production oracle. No public website, always-on keeper, or real-funds path has been enabled.
+The exchange is paused by deployment/smoke scripts and enabled by the healthy oracle/keeper service. It has a trusted test oracle, not a production oracle. No public domain cutover, always-on hosting, or real-funds path has been enabled.
 
-## Remaining application work
+## Connected application
 
-1. Connect a user-controlled NEAR testnet wallet; do not expose fixture private keys.
-2. Use the deployed six-decimal mock token for testing; current contract risk defaults are fixed.
-3. Integrate a NEAR wallet selector and transaction signing. Owner/session permissions must be preserved. Replace the local JSON-lines adapter with JSON-RPC change/view calls; never expose the demo faucet or shared fixture identities.
-4. Run a testnet oracle publisher and keeper. Index transaction hashes, receipts, finality, contract events and failed callbacks. Confirm final receipt results, not just transaction acceptance.
-5. Review production oracle, gas/storage bounds, token identity/decimals, economic parity gaps, treasury withdrawal and governance before discussing real funds.
-6. Create a separate frontend hosting project, verify the testnet UI there, then move only purplehands.wtf. Yellowhands' live site and contracts must continue unchanged.
+See [TESTNET-APP.md](TESTNET-APP.md) for the wallet frontend, live trusted oracle, keeper, local startup and tests. Wallet signing and native RPC calls are implemented. The service smoke test verifies automatic open and close execution.
 
-There is no automated domain/mainnet deployment step. The local server is not an always-on backend and shuts down when its process/laptop stops.
+Remaining before public availability: user-wallet approval test, isolated always-on hosting, full event backfill/monitoring and separate frontend hosting. Only then move purplehands.wtf; Yellowhands must remain unchanged. Production oracle, economic parity, governance and security review remain prerequisites for real funds.
+
+The local services stop when their processes or laptop stop. There is no automated domain/mainnet deployment step.
