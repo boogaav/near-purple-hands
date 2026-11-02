@@ -19,5 +19,5 @@
   "deployment": "Atomic deploy plus initialization; keep new entries paused until smoke test",
   "verification": "Verify deployed bytecode hashes, then test deposits, LP funding, open/close and withdrawal with mock tokens",
   "publicData": "Account names, test transactions, code and balances are public on NEAR testnet",
-  "status": "Account creation and deployment awaiting explicit confirmation after automatic approval review"
+  "status": "Approved, deployed and smoke-tested; entries paused after verification"
 }

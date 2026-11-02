@@ -7,7 +7,10 @@
     "dev": "cargo build -p purple-engine --bin demo && node demo/server.mjs",
     "test": "cargo test --workspace",
     "build:contract": "sh scripts/build-contract.sh",
-    "test:sandbox": "node tests/sandbox.mjs"
+    "test:sandbox": "node tests/sandbox.mjs",
+    "deploy:testnet": "node scripts/deploy-testnet.mjs",
+    "smoke:testnet": "node scripts/smoke-testnet.mjs",
+    "verify:testnet": "node scripts/verify-testnet.mjs"
   },
   "engines": {
     "node": ">=22"

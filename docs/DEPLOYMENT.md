@@ -1,11 +1,21 @@
 # Deployment handoff
 
-Current stage: local demo complete; testnet deployment requested on 2026-11-02. Requested eventual domain: purplehands.wtf.
+Current stage: native exchange and mock token deployed to NEAR testnet on 2026-11-02. Requested eventual domain: purplehands.wtf. The browser remains a local simulator.
 
-The concrete account/key plan is in `deployments/testnet-plan.json`. Automatic approval review requires explicit account-creation and local credential-storage confirmation before execution. No testnet deployment is yet recorded. Once approved, run `node scripts/deploy-testnet.mjs --approved`; this is testnet-only, refuses to overwrite differing code, atomically initializes contracts, verifies remote bytecode hashes, and pauses entries. Private keys remain in ignored `.local/testnet-keys/` with restricted permissions. Public receipts are saved to `deployments/testnet.json`.
+The user explicitly approved the account/key plan in `deployments/testnet-plan.json`. The deployment uses only faucet-funded testnet accounts. `deployments/testnet.json` records public accounts, code hashes, receipts, and smoke-test outcome. Keys are stored locally in `.local/testnet-keys/` with directory mode 0700 and file mode 0600; they are excluded from Git.
 
-1. Select a NEAR testnet account and separate oracle/guardian identities. No mainnet account is inferred from an email or an EVM address.
-2. Deploy the tested WASM with the configured six-decimal **test** NEP-141 token. Register the exchange with that token before funding it. Initialize `token`, `oracle`, `guardian`; current contract risk defaults are fixed.
+Commands:
+
+- `npm run deploy:testnet -- --approved`: resume the approved deployment; refuses differing existing bytecode and atomically initializes contracts.
+- `npm run smoke:testnet`: mock-token deposit, LP funding, delayed open/close, withdrawal and ledger checks. Re-pauses entries on exit. Skips when the manifest already records success.
+- `npm run verify:testnet`: public read-only code, finality and ledger verification; needs no keys.
+
+The exchange is left paused after testing. It has a trusted test oracle, not a production oracle. No public website, always-on keeper, or real-funds path has been enabled.
+
+## Remaining application work
+
+1. Connect a user-controlled NEAR testnet wallet; do not expose fixture private keys.
+2. Use the deployed six-decimal mock token for testing; current contract risk defaults are fixed.
 3. Integrate a NEAR wallet selector and transaction signing. Owner/session permissions must be preserved. Replace the local JSON-lines adapter with JSON-RPC change/view calls; never expose the demo faucet or shared fixture identities.
 4. Run a testnet oracle publisher and keeper. Index transaction hashes, receipts, finality, contract events and failed callbacks. Confirm final receipt results, not just transaction acceptance.
 5. Review production oracle, gas/storage bounds, token identity/decimals, economic parity gaps, treasury withdrawal and governance before discussing real funds.

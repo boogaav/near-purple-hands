@@ -1,3 +1,4 @@
+import { TESTNET_RPC, paceRpc } from "./testnet-rpc.mjs";
 // Explicit --approved flag acknowledges the separately reviewed account/key plan.
 // No mainnet support. Never print or commit private keys.
 import { connect, KeyPair, keyStores, transactions } from "near-api-js";
@@ -47,9 +48,10 @@ for (const id of [root, ...Object.values(ids)]) {
 }
 const near = await connect({
   networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
+  nodeUrl: TESTNET_RPC,
   keyStore: store,
 });
+paceRpc(near.connection.provider);
 if ((await near.connection.provider.status()).chain_id !== "testnet")
   throw Error("Unexpected RPC network");
 const path = new URL("../deployments/testnet.json", import.meta.url);
@@ -80,7 +82,12 @@ async function state(account) {
   }
 }
 async function record(label, promise) {
-  const r = await promise;
+  const submitted = await promise;
+  const r = await near.connection.provider.txStatus(
+    submitted.transaction.hash,
+    submitted.transaction.signer_id,
+    "FINAL",
+  );
   if (
     r.status?.Failure ||
     r.receipts_outcome?.some((x) => x.outcome.status?.Failure)
@@ -128,7 +135,7 @@ for (const [role, id] of Object.entries(ids)) {
         : 5n * 10n ** 23n;
   await record(
     "create_" + role,
-    account.createAccount(
+    (await near.account(root)).createAccount(
       id,
       (await store.getKey("testnet", id)).getPublicKey(),
       funding,

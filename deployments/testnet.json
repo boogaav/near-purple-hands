@@ -1,0 +1,217 @@
+{
+  "network": "testnet",
+  "root": "near-purple-hands-20261102.testnet",
+  "accounts": {
+    "exchange": "exchange.near-purple-hands-20261102.testnet",
+    "token": "token.near-purple-hands-20261102.testnet",
+    "oracle": "oracle.near-purple-hands-20261102.testnet",
+    "guardian": "guardian.near-purple-hands-20261102.testnet",
+    "trader": "trader.near-purple-hands-20261102.testnet",
+    "lp": "lp.near-purple-hands-20261102.testnet",
+    "keeper": "keeper.near-purple-hands-20261102.testnet"
+  },
+  "transactions": [
+    {
+      "label": "create_exchange",
+      "hash": "EkG9B7Q7fb4XJGQqShohQVkr7Vg5CVxThKHhqSfbJuLt",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_token",
+      "hash": "3ttHGHc8rrP2aKnAzzLJ2KG919e8ChXf3noX4wTgaiME",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_oracle",
+      "hash": "63qRXsy4borSTEXxQQb788gkzpKkaMHQWmmkdY7jrisN",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_guardian",
+      "hash": "AUuoLg7wvmqfJDnhsT55HqTDyMVTQKvvKvwwxVhDbmgx",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_trader",
+      "hash": "wB6iQX7GLivm7chzSBUG75eXBwAK9ybu491fiRYimAM",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_lp",
+      "hash": "2H8UdXLMtM5hN7W6gKd17AfYRvWKqLfTZ92qks9QC6ee",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "create_keeper",
+      "hash": "CQ1GcKgUV5v3XHm3dKb8hA4vetqJpyJu3jMJ685M44V7",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "deploy_init_token",
+      "hash": "5UDv38uBguEnREcLS3om224Axdn1Qz15wVUdjpZwxfjT",
+      "signer": "token.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "deploy_init_exchange",
+      "hash": "4wzDaQFa2EA3ydjeC2XGJRSNeryiUnyavKLWWjAMYeh9",
+      "signer": "exchange.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "pause_entries",
+      "hash": "HPZbAZQiNm3XreRvEieghusbT8SUckxJ8nMvm5EeaWL7",
+      "signer": "guardian.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_register",
+      "hash": "9kuV1uqy9dkKc5xRGitH8okK5eiH7EpMhaBYLgGWQMZy",
+      "signer": "trader.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_register",
+      "hash": "8Ttqw17hwUxQ1gzuyqGSJC7TvZvm5V9hJurBcxyvBakf",
+      "signer": "lp.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_register",
+      "hash": "9p4qpCraWzDuhte7AJEpZRF95LERrLQTNqLhgFzUNVyJ",
+      "signer": "keeper.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_storage_deposit",
+      "hash": "H9yBoCS9TxLFrgqTQ68bk4TjdZ7pKm7NvhDJGhokrjnD",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_storage_deposit",
+      "hash": "3XWUfbZvBbADbBZNGFUCoQBZ6RyMwZDVCSRJtKnHKntg",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_storage_deposit",
+      "hash": "CvyShqQBZ6MQFFwtnRu3DyYoMBeN8HAW3FH7RPgcDWVS",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_ft_transfer",
+      "hash": "3rt9iXVhbJ2Uu9m85FK6jdjfqRP1s2jnu9vXbPdovMRj",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_ft_transfer_call",
+      "hash": "36edRD4aamRZpzYjhNSghjfPfnJLmxz7RgaNUMXV2N8f",
+      "signer": "trader.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_ft_transfer",
+      "hash": "2b3F88wdrNrEsktbPQ4WhyQjGM346moMQaTRqzKg6Wq1",
+      "signer": "near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_ft_transfer_call",
+      "hash": "6mkqgRwL3YpzZzNowfVuETfuS1Z7MqBNZ8hUotkQJD8L",
+      "signer": "lp.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_add_liquidity",
+      "hash": "4wyvzZHRAsnPiJNPyANrNWgN774w55WwqLG1TV4Gpc9U",
+      "signer": "lp.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_pause_entries",
+      "hash": "4WcDXDWr7yzXWzNG95kzhVFZNHqbPuj6wGm1SKudccRx",
+      "signer": "guardian.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_pause_entries",
+      "hash": "5qtcNnxqVeQ5t45RFXDqoG9qkG627JPJbHv5ELKZwBwn",
+      "signer": "guardian.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_publish_price",
+      "hash": "GuHvT5sPfrBLBZ4AarerSYsDeVZZsZstLY3qFxmVLdjr",
+      "signer": "oracle.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_request_open",
+      "hash": "oHtDn2CKycANv6t3hC6X774XvmxJVdhLNytpNhwKS2i",
+      "signer": "trader.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_publish_price",
+      "hash": "J2GU5ui34uBgkefEnHsvoq2zBXs8z2dEaf9t1zTz3qWs",
+      "signer": "oracle.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_fill_open",
+      "hash": "7g5Q3PJ752FkaxVcpq4HdzsMxsZazvDirVfaxShjvtms",
+      "signer": "keeper.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_publish_price",
+      "hash": "5YrY1kQpn9TpxnagGuy2NcgUkYqAChLs4DW2d6T3BW5d",
+      "signer": "oracle.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_request_close",
+      "hash": "8FG3cGLaKStDBvgyyBMFXPKsDPhx9fgv28xPw7LMekhE",
+      "signer": "trader.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_publish_price",
+      "hash": "JBeKEWEArtLq6rJFK5vzJ5TNs1XvT33USqJfGVhSvziN",
+      "signer": "oracle.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_settle",
+      "hash": "BU6LY3q5cTP2KbaWeN1PCMzrk9AWm6HucNQvuhGqFy79",
+      "signer": "keeper.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_withdraw",
+      "hash": "EmnHGyE1hMJk5kB9KsVJtkTB1hukuZHYw2szxfPjEAuu",
+      "signer": "trader.near-purple-hands-20261102.testnet"
+    },
+    {
+      "label": "smoke_pause_entries",
+      "hash": "Aq41qNQ8Xg6yQaJEfAfxURaEmAsrLVzn2XmMP4wx4Sns",
+      "signer": "guardian.near-purple-hands-20261102.testnet"
+    }
+  ],
+  "deployed": true,
+  "faucet": {
+    "account": "near-purple-hands-20261102.testnet",
+    "hash": "9z7Q6i1AjfAbdVvASDBickeai2EwbGs56qcPYAmtEKu6"
+  },
+  "token": {
+    "account": "token.near-purple-hands-20261102.testnet",
+    "sha256": "9781f1783268ea0db1bf87fd3837ece8235eaa79166307eeab0f3c59de182694",
+    "codeHash": "BCRV7wfrtxxqBXvohXwCvm1YXrB3ZxL3hLGQRMmJDzcs"
+  },
+  "exchange": {
+    "account": "exchange.near-purple-hands-20261102.testnet",
+    "sha256": "05b06a3fb50226a6a3e3471eaee3cd2c1af949a3cbbdfcd021b32a44a9d17792",
+    "codeHash": "PD4XfZPaY2ptM4u8bLa436tV9TQvkRytAmCZbNTiZQu"
+  },
+  "entriesPaused": true,
+  "updatedAt": "2026-11-02T13:52:45.387Z",
+  "smoke": {
+    "passed": true,
+    "at": "2026-11-02T13:57:57.592Z",
+    "checks": [
+      "NEP-141 deposit",
+      "LP mint",
+      "delayed open",
+      "delayed close",
+      "token withdrawal",
+      "ledger conservation"
+    ],
+    "snapshot": {
+      "total": 10999000000,
+      "capital": 8998950000,
+      "treasury": 125000,
+      "reserved": 0
+    }
+  },
+  "rpc": "https://test.rpc.fastnear.com",
+  "verifiedAt": "2026-11-02T13:58:44.874694+00:00"
+}

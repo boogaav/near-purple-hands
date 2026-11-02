@@ -1,8 +1,19 @@
 # NEAR Purple Hands
 
-A native Rust/NEAR fork of Purple Hands’ V5 trading design. Traders open capped BTC positions against a fully reserved LP pool. This first delivery is a **local demo**, as requested. No public-network contract, domain cutover, real deposit address, bridge, or mainnet transaction is configured.
+A native Rust/NEAR fork of Purple Hands’ V5 trading design. Traders open capped BTC positions against a fully reserved LP pool. The browser product is a **local demo**. Native contracts are now deployed to **NEAR testnet**, using a mock token and separate fixture accounts. No domain cutover, real USDC, bridge or mainnet transaction is configured.
 
 ![Purple Hands local demo](docs/local-demo.png)
+
+## Testnet contracts
+
+- Exchange: `exchange.near-purple-hands-20261102.testnet`
+- Mock token (not USDC): `token.near-purple-hands-20261102.testnet`
+- [Exchange explorer](https://testnet.nearblocks.io/address/exchange.near-purple-hands-20261102.testnet)
+- Deployment hashes and public transaction receipts: [testnet manifest](deployments/testnet.json).
+- Run `npm run verify:testnet` for read-only bytecode/finality/ledger checks.
+- Entries remain paused after the smoke test. There is no always-on oracle or testnet wallet UI yet.
+
+Private testnet credentials stay in the Git-ignored `.local/testnet-keys/` directory; never upload it. The browser demo below is still simulated and does not use these contracts.
 
 ## Run the local product
 
@@ -36,7 +47,7 @@ npm run test:sandbox
 
 Artifact: `artifacts/near_purple_exchange.wasm` (Binaryen-lowered for runtime compatibility). Sandbox runtime is pinned to nearcore 2.14.0; the harness default 2.6.2 cannot load current SDK imports.
 
-The sandbox test creates disposable accounts and tests actual WASM execution, token deposits, LP minting, delayed trading, successful FT withdrawals and failed-transfer refunds. It uses no mainnet/testnet account or user keys. npm dependencies are only for this test harness; the product server has no third-party runtime npm dependencies.
+The sandbox test creates disposable accounts and tests actual WASM execution, token deposits, LP minting, delayed trading, successful FT withdrawals and failed-transfer refunds. It uses no mainnet/testnet account or user keys. npm dependencies are used for tests and testnet deployment scripts; the product server has no third-party runtime npm dependencies.
 
 ## Implemented
 
@@ -58,7 +69,7 @@ See [architecture and boundaries](docs/ARCHITECTURE.md), [V5 port differences](d
 
 Target brand/domain: **purplehands.wtf**. Live Yellowhands remains independent. No DNS or current website mapping is changed by this repository or its scripts. Before a public preview, create a separate deployment and move only Purple Hands’ domain; never replace the shared production project serving Yellowhands. GitHub is source hosting, not a deployed backend.
 
-Next stage: testnet wallet integration + robust oracle adapter + durable event indexer, then independent security review and separately approved deployment. There is no mainnet deploy script.
+Next stage: testnet wallet integration + robust oracle adapter + durable event indexer, then independent security review before any real-funds deployment. There is no mainnet deploy script.
 
 ## Hackathon provenance
 
