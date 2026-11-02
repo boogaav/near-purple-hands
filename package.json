@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "binaryen": "125.0.0",
+    "near-api-js": "5.1.1",
     "near-workspaces": "5.0.0"
   },
   "overrides": {

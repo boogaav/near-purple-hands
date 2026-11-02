@@ -1,0 +1,23 @@
+{
+  "network": "testnet",
+  "rootAccount": "near-purple-hands-20261102.testnet",
+  "accounts": {
+    "exchange": "exchange.near-purple-hands-20261102.testnet",
+    "token": "token.near-purple-hands-20261102.testnet",
+    "oracle": "oracle.near-purple-hands-20261102.testnet",
+    "guardian": "guardian.near-purple-hands-20261102.testnet",
+    "trader": "trader.near-purple-hands-20261102.testnet",
+    "lp": "lp.near-purple-hands-20261102.testnet",
+    "keeper": "keeper.near-purple-hands-20261102.testnet"
+  },
+  "funding": "Free testnet faucet only; 9.5 test NEAR allocated to subaccounts plus testnet gas",
+  "credentials": ".local/testnet-keys/; directory mode 0700, files mode 0600, ignored by Git",
+  "contracts": [
+    "artifacts/near_purple_exchange.wasm",
+    "artifacts/purple_mock_token.wasm"
+  ],
+  "deployment": "Atomic deploy plus initialization; keep new entries paused until smoke test",
+  "verification": "Verify deployed bytecode hashes, then test deposits, LP funding, open/close and withdrawal with mock tokens",
+  "publicData": "Account names, test transactions, code and balances are public on NEAR testnet",
+  "status": "Account creation and deployment awaiting explicit confirmation after automatic approval review"
+}

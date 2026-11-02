@@ -1,6 +1,8 @@
 # Deployment handoff
 
-Current stage: local only. Requested eventual domain: purplehands.wtf.
+Current stage: local demo complete; testnet deployment requested on 2026-11-02. Requested eventual domain: purplehands.wtf.
+
+The concrete account/key plan is in `deployments/testnet-plan.json`. Automatic approval review requires explicit account-creation and local credential-storage confirmation before execution. No testnet deployment is yet recorded. Once approved, run `node scripts/deploy-testnet.mjs --approved`; this is testnet-only, refuses to overwrite differing code, atomically initializes contracts, verifies remote bytecode hashes, and pauses entries. Private keys remain in ignored `.local/testnet-keys/` with restricted permissions. Public receipts are saved to `deployments/testnet.json`.
 
 1. Select a NEAR testnet account and separate oracle/guardian identities. No mainnet account is inferred from an email or an EVM address.
 2. Deploy the tested WASM with the configured six-decimal **test** NEP-141 token. Register the exchange with that token before funding it. Initialize `token`, `oracle`, `guardian`; current contract risk defaults are fixed.
@@ -9,4 +11,4 @@ Current stage: local only. Requested eventual domain: purplehands.wtf.
 5. Review production oracle, gas/storage bounds, token identity/decimals, economic parity gaps, treasury withdrawal and governance before discussing real funds.
 6. Create a separate frontend hosting project, verify the testnet UI there, then move only purplehands.wtf. Yellowhands' live site and contracts must continue unchanged.
 
-There is intentionally no automated domain/mainnet deployment step in this local-first delivery. The local server is not an always-on backend and shuts down when its process/laptop stops.
+There is no automated domain/mainnet deployment step. The local server is not an always-on backend and shuts down when its process/laptop stops.
