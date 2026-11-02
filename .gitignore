@@ -1,0 +1,12 @@
+/target/
+/node_modules/
+.env*
+!.env.example
+.local/
+*.key
+*.pem
+.DS_Store
+
+/artifacts/*.wasm
+/near-credentials/
+/.near-credentials/

@@ -1,0 +1,22 @@
+{
+  "name": "near-purple-hands",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cargo build -p purple-engine --bin demo && node demo/server.mjs",
+    "test": "cargo test --workspace",
+    "build:contract": "sh scripts/build-contract.sh",
+    "test:sandbox": "node tests/sandbox.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "binaryen": "125.0.0",
+    "near-workspaces": "5.0.0"
+  },
+  "overrides": {
+    "tar": "7.5.22"
+  }
+}
