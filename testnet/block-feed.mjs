@@ -3,7 +3,10 @@ const CHART_RPC = 'https://testnet-rpc.intea.rs';
 export function createBlockFeed(exchange) {
  const clients=new Set(), points=[];
  let running=false, failure=null, lastSuccess=0;
+ let slot=Promise.resolve(),lastRequest=0;
  const rpc=async(method,params)=>{
+  const turn=slot.then(async()=>{await new Promise(r=>setTimeout(r,Math.max(0,220-(Date.now()-lastRequest))));lastRequest=Date.now();});
+  slot=turn.catch(()=>{});await turn;
   const r=await fetch(CHART_RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:'chart',method,params}),signal:AbortSignal.timeout(8000)});
   if(!r.ok)throw Error(`Block feed HTTP ${r.status}`);
   const d=await r.json();if(d.error)throw Error(d.error.message||'Block feed RPC error');return d.result;
