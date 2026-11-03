@@ -1,0 +1,24 @@
+{
+  "status": "candidate-not-approved-for-launch",
+  "provider": "Pyth Pro",
+  "format": "solana Ed25519 / standard little-endian",
+  "registryNetwork": "solana-mainnet-beta",
+  "registryAccount": "3rdJbqfnagQ4yx9HXJViD4zc4xpiSqmFsKpPuSCQVyQL",
+  "registryOwner": "pytd2yyk641x7ak7mkaasSJVXh6YYZnC7wTmtgAyxPt",
+  "observedSlot": 464839147,
+  "signerHex": "80efc1f480c5615af3fb673d42287e993da9fbc3506b6e41dfa32950820c2e6c",
+  "signerExpiresAt": 2052483257,
+  "candidateFeed": 1,
+  "candidateChannel": 3,
+  "maxAgeMicroseconds": 2000000,
+  "liveSamples": 6,
+  "observedConfidenceBpsRange": [8.975597330164923, 12.70418725899887],
+  "liveSignerMatchedRegistry": true,
+  "mainnetDeployed": false,
+  "limitations": [
+    "Custom NEAR integration, not a supported Pyth NEAR receiver",
+    "Current confidence exceeds the candidate maximum 5 bps; samples intentionally rejected for settlement",
+    "Signer revocation/rotation and deployment upgrade-key controls require review",
+    "Production latency, feed identity verification and economics remain release gates"
+  ]
+}

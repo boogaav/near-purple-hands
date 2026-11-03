@@ -81,6 +81,7 @@ pub struct Engine {
     pub reserved: u64,
     pub price: u64,
     pub price_at: u64,
+    pub last_publish_at: u64,
     pub sequence: u64,
     pub next_id: u64,
     pub paused: bool,
@@ -101,6 +102,7 @@ impl Default for Engine {
             reserved: 0,
             price: 0,
             price_at: 0,
+            last_publish_at: 0,
             sequence: 0,
             next_id: 1,
             paused: false,
@@ -170,6 +172,7 @@ impl Engine {
         )?;
         self.price = price;
         self.price_at = at;
+        self.last_publish_at = now;
         self.sequence = seq;
         self.outage_since = None;
         self.last_health = Some(now);
@@ -554,9 +557,8 @@ impl Engine {
     pub fn void_outage(&mut self, owner: &str, now: u64) -> Result<()> {
         need(self.fresh(now).is_err(), "Oracle healthy")?;
         need(
-            self.last_health.is_some_and(|t| now >= t && now - t <= 30)
-                && self.outage_since.is_some_and(|t| now >= t + 3600),
-            "Need one hour of continuous observed outage",
+            self.sequence > 0 && now >= self.last_publish_at && now - self.last_publish_at >= 3600,
+            "Wait one hour since the last accepted oracle publication",
         )?;
         let p = self.positions.get(owner).ok_or("No position")?;
         need(p.entry > 0, "Cancel unfilled request instead")?;

@@ -29,3 +29,5 @@ This is a working local first slice, not byte-for-byte V5 parity or an assertion
 ## Mainnet preparation — 2026-11-03
 
 The connected testnet frontend/wallet and laptop oracle/keeper now exist (see `TESTNET-APP.md`); the earlier local-stage table is not a mainnet readiness claim. The next contract artifact starts paused and requires post-request oracle observations for entry/voluntary exit. Its request storage layout differs from the currently deployed testnet contract, so an in-place upgrade is unsupported. See `MAINNET-READINESS.md` for review findings, verification and the outstanding real-USDC launch dependencies.
+
+The next artifact also records oracle acceptance time for the one-hour outage refund (no continuous observer dependency). A separate verified-only Pyth Pro candidate is documented in `VERIFIED-ORACLE.md`; current live confidence prevents high-leverage activation.

@@ -81,12 +81,13 @@ fn healthy_publish_resets_outage() {
     assert!(e.void_outage("alice", 3740).is_err());
 }
 #[test]
-fn missing_health_observations_restart_clock() {
+fn oracle_outage_recovers_without_any_health_observer() {
     let mut e = setup();
     open(&mut e, true);
-    e.health(120);
-    e.health(4000);
-    assert!(e.void_outage("alice", 4000).is_err());
+    assert!(e.void_outage("alice", 3700).is_err());
+    e.void_outage("alice", 3701).unwrap();
+    assert!(e.positions.is_empty());
+    assert!(e.invariant());
 }
 #[test]
 fn continuous_observed_outage_voids_without_double_fee() {
@@ -258,5 +259,27 @@ fn voluntary_exit_requires_post_request_observation() {
     assert!(e.settle("alice", "keeper", 106, 7).is_err());
     e.publish(e.price, 105, e.sequence + 1, 106).unwrap();
     e.settle("alice", "keeper", 106, 7).unwrap();
+    assert!(e.invariant());
+}
+
+#[test]
+fn health_calls_cannot_extend_or_shorten_recovery_deadline() {
+    let mut e = setup();
+    open(&mut e, true);
+    for now in [120, 1000, 2000, 3700] {
+        e.health(now);
+        assert!(e.void_outage("alice", now).is_err());
+    }
+    e.health(3701);
+    e.void_outage("alice", 3701).unwrap();
+    assert!(e.invariant());
+}
+#[test]
+fn recovery_clock_uses_acceptance_time_and_resets_on_new_publication() {
+    let mut e = setup();
+    open(&mut e, true);
+    e.publish(80_000 * UNIT, 3690, 3, 3700).unwrap();
+    assert!(e.void_outage("alice", 7300 - 1).is_err());
+    e.void_outage("alice", 7300).unwrap();
     assert!(e.invariant());
 }

@@ -57,3 +57,12 @@ No mainnet transactions, DNS changes, real-token deposits, key creation or publi
 - Read-only preflight: mainnet chain identity and USDC symbol/6 decimals verified; owner balance zero; exits 2 with explicit blockers.
 
 No independent audit, real-USDC transfer, production oracle integration, sustained load test or production deployment is claimed by these results.
+
+
+## Follow-up: funding, recovery and verified-oracle candidate
+
+Mainnet funding rechecked at block 222846750: `yellowhands.near` holds **9.77 NEAR**. Meteor has that account open. No funds have been spent; signing/deployment remains outstanding.
+
+The recovery engine now records the chain time at each accepted publication. After one hour without an accepted publication, an open position can be voided permissionlessly to its fixed owner balance; no periodic observer is required. Healthy publication resets the deadline, and health calls cannot change it. Entry fees remain paid and unused escrow is returned, as before. This changes the timeout policy and storage layout; it applies only to new artifacts, not existing deployments.
+
+The signed-provider implementation, live sample results and remaining oracle blockers are in [VERIFIED-ORACLE.md](VERIFIED-ORACLE.md). Six authenticated Pyth messages matched the official signer registry, but their confidence exceeds the current contract limit. They were not used for settlement. The provider choice remains a custom-adapter candidate, not a completed production integration.

@@ -1,0 +1,10 @@
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const wasm=await readFile(new URL('../artifacts/near_purple_exchange_verified.wasm',import.meta.url));
+const exports=WebAssembly.Module.exports(new WebAssembly.Module(wasm)).map(x=>x.name);
+assert.ok(exports.includes('new_verified'));
+assert.ok(exports.includes('submit_verified_price'));
+assert.ok(exports.includes('get_oracle_config'));
+assert.ok(!exports.includes('publish_price'),'Manual price setter must not be exported');
+assert.ok(!exports.includes('new'),'Trusted test initializer must not be exported');
+console.log('PASS: verified artifact has signed-price methods; no manual publisher or test initializer.');

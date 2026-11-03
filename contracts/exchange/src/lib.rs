@@ -1,7 +1,8 @@
 //! Native NEAR adapter; bounded local/testnet prototype.
+mod pyth;
 use near_sdk::{
     assert_one_yocto, env,
-    json_types::{U128, U64},
+    json_types::{Base64VecU8, U128, U64},
     near, AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError, PromiseOrValue,
 };
 use purple_engine::{Engine, Outcome};
@@ -14,6 +15,8 @@ pub struct Exchange {
     oracle: AccountId,
     guardian: AccountId,
     withdrawals: BTreeMap<AccountId, u64>,
+    verified_oracle: Option<pyth::Config>,
+    last_verified_us: u64,
 }
 fn check<T>(r: Result<T, String>) -> T {
     r.unwrap_or_else(|e| env::panic_str(&e))
@@ -26,6 +29,7 @@ fn actor() -> String {
 }
 #[near]
 impl Exchange {
+    #[cfg(any(test, feature = "test-oracle"))]
     #[init]
     pub fn new(token: AccountId, oracle: AccountId, guardian: AccountId) -> Self {
         Self {
@@ -37,7 +41,78 @@ impl Exchange {
             oracle,
             guardian,
             withdrawals: BTreeMap::new(),
+            verified_oracle: None,
+            last_verified_us: 0,
         }
+    }
+    /// Candidate verified-only initialization. Signer provenance must be independently checked.
+    /// No in-contract signer replacement or manual-price fallback exists in this mode.
+    #[init]
+    pub fn new_verified(
+        token: AccountId,
+        guardian: AccountId,
+        signer: [u8; 32],
+        signer_expires_at: u64,
+        feed: u32,
+        channel: u8,
+        max_confidence_bps: u16,
+    ) -> Self {
+        let config = pyth::Config {
+            signer,
+            expires_at: signer_expires_at,
+            feed,
+            channel,
+            max_confidence_bps,
+        };
+        config.validate(now()).unwrap_or_else(|e| env::panic_str(e));
+        Self {
+            engine: Engine {
+                paused: true,
+                ..Engine::default()
+            },
+            token,
+            oracle: env::current_account_id(),
+            guardian,
+            withdrawals: BTreeMap::new(),
+            verified_oracle: Some(config),
+            last_verified_us: 0,
+        }
+    }
+    pub fn get_oracle_config(&self) -> near_sdk::serde_json::Value {
+        match &self.verified_oracle {
+            Some(c) => near_sdk::serde_json::json!({"mode":"pyth-pro-verified-candidate",
+                "signer":c.signer,"signer_expires_at":c.expires_at,"feed":c.feed,
+                "channel":c.channel,"max_confidence_bps":c.max_confidence_bps,
+                "max_age_us":2_000_000,"last_observed_us":self.last_verified_us,
+                "manual_price_fallback":false}),
+            None => near_sdk::serde_json::json!({"mode":"test-only-trusted-publisher"}),
+        }
+    }
+    pub fn submit_verified_price(&mut self, message: Base64VecU8) {
+        let config = self
+            .verified_oracle
+            .as_ref()
+            .expect("Verified oracle not configured");
+        let quote = config
+            .verify(
+                &message.0,
+                env::block_timestamp() / 1000,
+                self.last_verified_us,
+            )
+            .unwrap_or_else(|e| env::panic_str(e));
+        check(
+            self.engine.publish(
+                quote.price,
+                quote.observed_us / 1_000_000,
+                self.engine
+                    .sequence
+                    .checked_add(1)
+                    .expect("Sequence overflow"),
+                now(),
+            ),
+        );
+        self.last_verified_us = quote.observed_us;
+        self.event("verified_price");
     }
     #[payable]
     pub fn register(&mut self) {
@@ -103,7 +178,9 @@ impl Exchange {
             true
         }
     }
+    #[cfg(any(test, feature = "test-oracle"))]
     pub fn publish_price(&mut self, price: U64, timestamp: u64, sequence: u64) {
+        assert!(self.verified_oracle.is_none(), "Manual prices disabled");
         assert_eq!(env::predecessor_account_id(), self.oracle, "Only oracle");
         check(self.engine.publish(price.0, timestamp, sequence, now()));
         self.event("price");
@@ -167,6 +244,13 @@ impl Exchange {
         min_price: U64,
         max_price: U64,
     ) -> u64 {
+        if self.verified_oracle.is_some() {
+            assert!(
+                [100, 500].contains(&leverage),
+                "V1 supports 100x or 500x only"
+            );
+        }
+        self.require_verified_fresh();
         let id = check(self.engine.request_open(
             owner.as_str(),
             &actor(),
@@ -182,6 +266,7 @@ impl Exchange {
         id
     }
     pub fn fill_open(&mut self, owner: AccountId) {
+        self.require_verified_fresh();
         check(
             self.engine
                 .fill_open(owner.as_str(), &actor(), now(), env::block_height()),
@@ -204,6 +289,7 @@ impl Exchange {
         self.event("close_requested");
     }
     pub fn settle(&mut self, owner: AccountId) -> Outcome {
+        self.require_verified_fresh();
         let o = check(
             self.engine
                 .settle(owner.as_str(), &actor(), now(), env::block_height()),
@@ -224,6 +310,18 @@ impl Exchange {
     }
     pub fn get_pending_withdrawal(&self, owner: AccountId) -> U64 {
         U64(*self.withdrawals.get(&owner).unwrap_or(&0))
+    }
+    fn require_verified_fresh(&self) {
+        if let Some(config) = &self.verified_oracle {
+            config.validate(now()).unwrap_or_else(|e| env::panic_str(e));
+            let now_us = env::block_timestamp() / 1000;
+            assert!(
+                self.last_verified_us > 0
+                    && now_us >= self.last_verified_us
+                    && now_us - self.last_verified_us <= 2_000_000,
+                "Verified observation stale"
+            );
+        }
     }
     fn event(&self, name: &str) {
         assert!(self.engine.invariant(), "Ledger invariant");
@@ -300,5 +398,66 @@ mod tests {
         assert!(e.withdraw_callback("alice.near".parse().unwrap(), Ok(())));
         assert_eq!(e.engine.total, 1_000_000);
         assert!(e.engine.invariant());
+    }
+    #[test]
+    #[should_panic(expected = "V1 supports 100x or 500x only")]
+    fn verified_v1_rejects_1000x_before_request() {
+        let (mut exchange, _, _) = verified_setup();
+        exchange.request_open(
+            "alice.near".parse().unwrap(),
+            true,
+            U64(10_000_000),
+            1000,
+            U64(1),
+            U64(u64::MAX),
+        );
+    }
+    fn verified_setup() -> (Exchange, Vec<u8>, u64) {
+        let h = include_str!("pyth-fixture.hex").trim();
+        let message: Vec<u8> = (0..h.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap())
+            .collect();
+        let t = 1771339368200000u64;
+        let mut ctx = VMContextBuilder::new();
+        ctx.current_account_id("verified.near".parse().unwrap())
+            .block_timestamp(t * 1000);
+        testing_env!(ctx.build());
+        let e = Exchange::new_verified(
+            "usdc.near".parse().unwrap(),
+            "guardian.near".parse().unwrap(),
+            message[68..100].try_into().unwrap(),
+            t / 1_000_000 + 100,
+            1,
+            3,
+            5,
+        );
+        (e, message, t)
+    }
+    #[test]
+    fn verified_submission_updates_engine_and_preserves_pause() {
+        let (mut e, message, t) = verified_setup();
+        e.submit_verified_price(Base64VecU8(message));
+        assert_eq!(e.engine.price, 67_134_362_876);
+        assert_eq!(e.last_verified_us, t);
+        assert!(e.engine.paused);
+        e.require_verified_fresh();
+        assert!(e.engine.invariant());
+    }
+    #[test]
+    #[should_panic(expected = "Manual prices disabled")]
+    fn verified_mode_has_no_manual_price_fallback_even_in_test_build() {
+        let (mut e, _, _) = verified_setup();
+        e.publish_price(U64(80_000_000_000), 0, 1);
+    }
+    #[test]
+    #[should_panic(expected = "Verified observation stale")]
+    fn execution_cannot_reuse_verified_price_after_two_seconds() {
+        let (mut e, message, t) = verified_setup();
+        e.submit_verified_price(Base64VecU8(message));
+        let mut ctx = VMContextBuilder::new();
+        ctx.block_timestamp((t + 2_000_001) * 1000);
+        testing_env!(ctx.build());
+        e.require_verified_fresh();
     }
 }

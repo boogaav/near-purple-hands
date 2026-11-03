@@ -7,5 +7,10 @@
   "tokenSource": "https://developers.circle.com/stablecoins/usdc-contract-addresses",
   "status": "blocked-not-deployed",
   "oracle": null,
-  "exchange": null
+  "exchange": null,
+  "requestedLeverages": [
+    100,
+    500
+  ],
+  "leverageStatus": "requested-not-cleared-for-live-trading"
 }
