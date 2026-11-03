@@ -84,3 +84,5 @@ Pre-existing baseline: [boogaav/purple-hands at dc0063dca2caf0cef69d730c003958d3
 AI assistance: OpenAI Codex helped implement and test the fork. Libraries: NEAR SDK and contract standards, Serde, Borsh; NEAR Workspaces for local testing. Dependency licenses remain their respective authors’. New project code: MIT.
 
 Official references: [NEAR contracts](https://docs.near.org/), [asynchronous calls](https://docs.near.org/smart-contracts/anatomy/crosscontract), [NEP-141](https://github.com/near/NEPs/blob/master/neps/nep-0141.md), [NEAR Workspaces](https://github.com/near/near-workspaces-js).
+
+Mainnet V1 preparation and open launch blockers: [readiness review](docs/MAINNET-READINESS.md). Read-only preflight: `node scripts/preflight-mainnet.mjs`. New request storage is not compatible with an in-place upgrade of the existing testnet deployment.

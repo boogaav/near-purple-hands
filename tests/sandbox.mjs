@@ -38,6 +38,8 @@ try {
       guardian: root.accountId,
     },
   });
+  assert.equal((await exchange.view("get_state")).paused, true);
+  await root.call(exchange, "pause_entries", {paused:false}, {gas});
   for (const a of [alice, lp, root])
     await a.call(
       exchange,
@@ -100,7 +102,19 @@ try {
     },
     { gas },
   );
-  await worker.provider.fastForward(2);
+  await worker.provider.fastForward(4);
+  // Finalized head can lag the request receipt: wait for a genuinely later observation.
+  {
+    const position = (await exchange.view("get_state")).positions[alice.accountId];
+    const requestedAt = (position.close || position.open).requested_at;
+    let observedAt = await timestamp();
+    for(let tries=0; observedAt<=requestedAt && tries<20; tries++) {
+      await new Promise(resolve=>setTimeout(resolve,250));
+      observedAt=await timestamp();
+    }
+    assert.ok(observedAt>requestedAt, "Finalized observation must follow request");
+    await root.call(exchange, "publish_price", {price: seq === 2 ? "80000000000" : "80010000000", timestamp: observedAt, sequence:seq++}, {gas});
+  }
   await root.call(exchange, "fill_open", { owner: alice.accountId }, { gas });
   s = await exchange.view("get_state");
   assert.equal(s.positions[alice.accountId].entry, 80_000_000_000);
@@ -120,7 +134,19 @@ try {
     },
     { gas },
   );
-  await worker.provider.fastForward(2);
+  await worker.provider.fastForward(4);
+  // Finalized head can lag the request receipt: wait for a genuinely later observation.
+  {
+    const position = (await exchange.view("get_state")).positions[alice.accountId];
+    const requestedAt = (position.close || position.open).requested_at;
+    let observedAt = await timestamp();
+    for(let tries=0; observedAt<=requestedAt && tries<20; tries++) {
+      await new Promise(resolve=>setTimeout(resolve,250));
+      observedAt=await timestamp();
+    }
+    assert.ok(observedAt>requestedAt, "Finalized observation must follow request");
+    await root.call(exchange, "publish_price", {price: seq === 2 ? "80000000000" : "80010000000", timestamp: observedAt, sequence:seq++}, {gas});
+  }
   await root.call(exchange, "settle", { owner: alice.accountId }, { gas });
   s = await exchange.view("get_state");
   assert.equal(Object.keys(s.positions).length, 0);

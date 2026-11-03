@@ -1,0 +1,11 @@
+{
+  "network": "mainnet",
+  "owner": "yellowhands.near",
+  "domain": "purplehands.wtf",
+  "token": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+  "tokenDecimals": 6,
+  "tokenSource": "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+  "status": "blocked-not-deployed",
+  "oracle": null,
+  "exchange": null
+}

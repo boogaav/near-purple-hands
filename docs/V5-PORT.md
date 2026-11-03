@@ -25,3 +25,7 @@ Baseline: `dc0063dca2caf0cef69d730c003958d3fdab2287`.
 | Native NEAR wallet/login | Next stage; no browser signing or real account linked |
 
 This is a working local first slice, not byte-for-byte V5 parity or an assertion that V5 review issues are resolved in the Solidity deployment. No existing deployment is modified.
+
+## Mainnet preparation — 2026-11-03
+
+The connected testnet frontend/wallet and laptop oracle/keeper now exist (see `TESTNET-APP.md`); the earlier local-stage table is not a mainnet readiness claim. The next contract artifact starts paused and requires post-request oracle observations for entry/voluntary exit. Its request storage layout differs from the currently deployed testnet contract, so an in-place upgrade is unsupported. See `MAINNET-READINESS.md` for review findings, verification and the outstanding real-USDC launch dependencies.

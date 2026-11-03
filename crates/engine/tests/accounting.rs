@@ -22,6 +22,7 @@ fn open(e: &mut Engine, long: bool) {
         1,
     )
     .unwrap();
+    e.publish(80_000 * UNIT, 101, 2, 101).unwrap();
     e.fill_open("alice", "keeper", 102, 3).unwrap();
     assert!(e.invariant());
 }
@@ -31,9 +32,10 @@ fn entry_fee_counted_once() {
     let k = e.capital;
     open(&mut e, true);
     assert_eq!(e.capital, k + 100_000);
-    e.publish(80_000 * UNIT, 140, 2, 140).unwrap();
+    e.publish(80_000 * UNIT, 140, 3, 140).unwrap();
     e.request_close("alice", "alice", 79_000 * UNIT, 81_000 * UNIT, 140, 10)
         .unwrap();
+    e.publish(e.price, 141, e.sequence + 1, 141).unwrap();
     let o = e.settle("alice", "keeper", 142, 12).unwrap();
     assert_eq!(o.gross, 0);
     assert_eq!(o.net, -140_000);
@@ -74,7 +76,7 @@ fn healthy_publish_resets_outage() {
     for t in (120..3720).step_by(20) {
         e.health(t);
     }
-    e.publish(80_000 * UNIT, 3720, 2, 3720).unwrap();
+    e.publish(80_000 * UNIT, 3720, 3, 3720).unwrap();
     e.health(3740);
     assert!(e.void_outage("alice", 3740).is_err());
 }
@@ -103,7 +105,7 @@ fn forced_gap_both_sides_conserves_funds() {
         for price in [79_000 * UNIT, 81_000 * UNIT] {
             let mut e = setup();
             open(&mut e, long);
-            e.publish(price, 105, 2, 105).unwrap();
+            e.publish(price, 105, 3, 105).unwrap();
             let o = e.settle("alice", "keeper", 105, 5).unwrap();
             assert_eq!(o.reward, 0);
             assert_eq!(o.gross.unsigned_abs(), 10 * UNIT);
@@ -117,6 +119,7 @@ fn early_exit_fee_cannot_exceed_return() {
     open(&mut e, true);
     e.request_close("alice", "alice", 79_000 * UNIT, 81_000 * UNIT, 104, 5)
         .unwrap();
+    e.publish(e.price, 105, e.sequence + 1, 105).unwrap();
     let o = e.settle("alice", "keeper", 106, 7).unwrap();
     assert_eq!(o.payout, 9_900_000);
     assert!(e.invariant());
@@ -211,14 +214,49 @@ fn price_sweep_conserves_and_caps() {
         for delta in -100..=100 {
             let mut e = setup();
             open(&mut e, long);
-            e.publish((80_000i64 + delta) as u64 * UNIT, 140, 2, 140)
+            e.publish((80_000i64 + delta) as u64 * UNIT, 140, 3, 140)
                 .unwrap();
             e.request_close("alice", "alice", 79_000 * UNIT, 81_000 * UNIT, 140, 10)
                 .unwrap();
+            e.publish(e.price, 141, e.sequence + 1, 141).unwrap();
             let o = e.settle("alice", "keeper", 142, 12).unwrap();
             assert!(o.gross.unsigned_abs() <= 10 * UNIT);
             assert!(o.payout <= 20 * UNIT);
             assert!(e.invariant());
         }
     }
+}
+
+#[test]
+fn entry_cannot_use_pre_request_or_same_second_price() {
+    let mut e = setup();
+    e.request_open(
+        "alice",
+        "alice",
+        true,
+        10 * UNIT,
+        1000,
+        79_000 * UNIT,
+        81_000 * UNIT,
+        100,
+        1,
+    )
+    .unwrap();
+    assert!(e.fill_open("alice", "keeper", 102, 3).is_err());
+    e.publish(80_000 * UNIT, 100, 2, 102).unwrap();
+    assert!(e.fill_open("alice", "keeper", 102, 3).is_err());
+    e.publish(80_000 * UNIT, 101, 3, 102).unwrap();
+    e.fill_open("alice", "keeper", 102, 3).unwrap();
+    assert!(e.invariant());
+}
+#[test]
+fn voluntary_exit_requires_post_request_observation() {
+    let mut e = setup();
+    open(&mut e, true);
+    e.request_close("alice", "alice", 79_000 * UNIT, 81_000 * UNIT, 104, 5)
+        .unwrap();
+    assert!(e.settle("alice", "keeper", 106, 7).is_err());
+    e.publish(e.price, 105, e.sequence + 1, 106).unwrap();
+    e.settle("alice", "keeper", 106, 7).unwrap();
+    assert!(e.invariant());
 }

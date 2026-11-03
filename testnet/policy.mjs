@@ -5,8 +5,8 @@ export function priceFromTicker(p, now) {
  return {price:String(Math.round(price*1e6)),timestamp};
 }
 export function keeperAction(p, s, height, now) {
-  const fresh = now - s.price_at <= 15;
-  const inWindow = r => r && height >= r.from && height <= r.until && s.price >= r.min && s.price <= r.max;
+  const fresh = now >= s.price_at && now - s.price_at <= 15;
+  const inWindow = r => r && (r.after_sequence === undefined || (s.sequence > r.after_sequence && s.price_at > r.requested_at)) && height >= r.from && height <= r.until && s.price >= r.min && s.price <= r.max;
   if (!p.entry) return height > p.open.until ? 'cancel_open' : fresh && inWindow(p.open) ? 'fill_open' : null;
   const magnitude = Math.abs(s.price-p.entry) * p.leverage / p.entry;
   if (fresh && (magnitude >= .8 || now >= p.opened_at + 86400 || inWindow(p.close))) return 'settle';

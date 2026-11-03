@@ -23,3 +23,10 @@ test('keeper only settles requested exits, cap triggers or expiry with fresh pri
  assert.equal(keeperAction(pos,{...s,price:79920},20,100),'settle');
  assert.equal(keeperAction({...pos,close:p.open},s,20,120),null);
 });
+test('new request schema requires a later oracle observation and rejects future prices',()=>{
+ const pending={...p,open:{...p.open,after_sequence:7,requested_at:100}};
+ assert.equal(keeperAction(pending,{...s,sequence:7},12,102),null);
+ assert.equal(keeperAction(pending,{...s,sequence:8},12,102),null);
+ assert.equal(keeperAction(pending,{...s,sequence:8,price_at:101},12,102),'fill_open');
+ assert.equal(keeperAction(pending,{...s,sequence:8,price_at:103},12,102),null);
+});

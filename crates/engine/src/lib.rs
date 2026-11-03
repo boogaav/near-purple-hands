@@ -34,6 +34,8 @@ pub struct Redemption {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub struct Request {
+    pub requested_at: u64,
+    pub after_sequence: u64,
     pub from: u64,
     pub until: u64,
     pub min: u64,
@@ -387,6 +389,8 @@ impl Engine {
                 fee,
                 escrow,
                 open: Request {
+                    requested_at: now,
+                    after_sequence: self.sequence,
                     from: block + 2,
                     until: block + 22,
                     min,
@@ -399,6 +403,10 @@ impl Engine {
     }
     fn in_window(&self, r: &Request, block: u64, now: u64) -> Result<()> {
         self.fresh(now)?;
+        need(
+            self.sequence > r.after_sequence && self.price_at > r.requested_at,
+            "Execution requires an oracle observation after the request",
+        )?;
         need(block >= r.from && block <= r.until, "Outside fill window")?;
         need(
             self.price >= r.min && self.price <= r.max,
@@ -448,6 +456,8 @@ impl Engine {
             "Close already pending",
         )?;
         p.close = Some(Request {
+            requested_at: now,
+            after_sequence: self.sequence,
             from: block + 2,
             until: block + 22,
             min,

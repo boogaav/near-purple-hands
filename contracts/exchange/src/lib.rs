@@ -29,7 +29,10 @@ impl Exchange {
     #[init]
     pub fn new(token: AccountId, oracle: AccountId, guardian: AccountId) -> Self {
         Self {
-            engine: Engine::default(),
+            engine: Engine {
+                paused: true,
+                ..Engine::default()
+            },
             token,
             oracle,
             guardian,
