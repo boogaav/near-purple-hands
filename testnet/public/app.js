@@ -201,6 +201,7 @@ function render(data) {
   draw();
 }
 let chartRange, animationFrame;
+const reducedChartMotion = matchMedia("(prefers-reduced-motion: reduce)");
 function draw() {
   cancelAnimationFrame(animationFrame);
   const canvas = $("chart"),
@@ -231,11 +232,17 @@ function draw() {
   if(!chartRange || matchMedia('(prefers-reduced-motion: reduce)').matches) chartRange=target;
   else chartRange={min:chartRange.min+(min-chartRange.min)*.22,max:chartRange.max+(max-chartRange.max)*.22};
   min=chartRange.min;max=chartRange.max;
-  if(Math.abs(min-target.min)>100 || Math.abs(max-target.max)>100) animationFrame=requestAnimationFrame(draw);
+  const end = points.at(-1);
+  const reduced = reducedChartMotion.matches;
+  // Extend time at the last observed price; never predict a future price.
+  const liveTime = reduced ? end.t : Math.max(end.t, Math.min(Date.now()/1000, end.t + 5));
+  const startTime = points[0].t;
+  const span = Math.max(30, end.t-startTime+5);
+  if(!reduced && !document.hidden) animationFrame=requestAnimationFrame(draw);
   const y = (v) => h - 28 - ((v - min) / (max - min)) * (h - 55),
     x = (t) =>
       18 +
-      ((t - points[0].t) / Math.max(1, points.at(-1).t - points[0].t)) *
+      ((t - startTime) / span) *
         (w - 60);
   c.strokeStyle = "#302b3c";
   c.lineWidth = 1;
@@ -245,13 +252,21 @@ function draw() {
     c.lineTo(w, (h * i) / 5);
     c.stroke();
   }
-  c.beginPath();
-  points.forEach((v, i) =>
-    i && v.t-points[i-1].t < 5 ? c.lineTo(x(v.t), y(v.p)) : c.moveTo(x(v.t), y(v.p)),
-  );
   c.strokeStyle = "#b793ff";
   c.lineWidth = 2.5;
-  c.stroke();
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  for(let i=1;i<points.length;i++) {
+    const a=points[i-1], b=points[i], mid=(x(a.t)+x(b.t))/2;
+    c.beginPath(); c.moveTo(x(a.t),y(a.p));
+    // Horizontal tangents keep the curve within observed price bounds.
+    c.setLineDash(b.t-a.t>5 ? [3,6] : []);
+    c.bezierCurveTo(mid,y(a.p),mid,y(b.p),x(b.t),y(b.p));
+    c.stroke();
+  }
+  c.setLineDash([]);
+  c.beginPath(); c.moveTo(x(end.t),y(end.p));
+  c.lineTo(x(liveTime),y(end.p)); c.stroke();
   if (p?.entry) {
     c.setLineDash([4, 5]);
     c.strokeStyle = "#a5a0b6";
@@ -267,20 +282,22 @@ function draw() {
   c.fillStyle='#a5a0b6';c.font='11px system-ui';
   c.fillText(new Date(points[0].t*1000).toLocaleTimeString(),18,h-6);
   c.textAlign='right';c.fillText(new Date(points.at(-1).t*1000).toLocaleTimeString(),w-42,h-6);c.textAlign='left';
-  const end = points.at(-1);
+  const pulse = reduced ? 0 : (Math.sin(performance.now()/300)+1)/2;
+  c.beginPath();
+  c.arc(x(liveTime),y(end.p),10+pulse*7,0,Math.PI*2);
+  c.fillStyle=`rgba(183,147,255,${.08+pulse*.12})`; c.fill();
   c.fillStyle = "#b793ff";
   c.shadowColor = "#b793ff";
   c.shadowBlur = 20;
   c.beginPath();
-  c.arc(x(end.t), y(end.p), 6, 0, Math.PI * 2);
+  c.arc(x(liveTime), y(end.p), 6 + pulse, 0, Math.PI * 2);
   c.fill();
   c.shadowBlur = 0;
-  if (p?.entry) {
-    c.font = "26px system-ui";
-    c.fillText("🐦", x(end.t) - 14, y(end.p) - 14);
-  }
+
 }
 addEventListener("resize", draw);
+document.addEventListener("visibilitychange", draw);
+reducedChartMotion.addEventListener("change", draw);
 async function poll() {
   try {
     render(await api("state"));
