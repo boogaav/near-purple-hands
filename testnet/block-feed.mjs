@@ -37,7 +37,7 @@ export function createBlockFeed(exchange) {
    }
    failure=null;lastSuccess=Date.now();emit('health',{ok:true,at:lastSuccess});
   }catch(e){failure=e.message;emit('health',{ok:false,error:failure});}
-  setTimeout(cycle,failure?3000:400);
+  setTimeout(cycle,failure?15000:400);
  }
  return {subscribe(req,res){
   res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});

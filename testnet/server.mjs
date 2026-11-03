@@ -12,7 +12,7 @@ async function snapshot() {
  try {rows=(await readFile(new URL('../.local/testnet-runtime/events.jsonl',import.meta.url),'utf8')).trim().split('\n').map(x=>JSON.parse(x));} catch {}
  const history=rows.flatMap(r=>(r.events||[]).filter(e=>e.event==='settled').flatMap(e=>e.data.map(d=>({...d,hash:r.hash})))).reverse();
  const liabilities=Object.values(s.accounts).reduce((n,a)=>n+a.balance,0)+Object.values(s.positions).reduce((n,p)=>n+p.margin+p.escrow+(!p.entry?p.fee:0),0)+s.capital+s.treasury;
- return {ok:true,state:s,block:b.header.height,history,invariant:s.total===liabilities,worker:health.ok&&Date.now()-health.at<20000,ids};
+ return {ok:true,state:s,block:b.header.height,blockTime:Number(b.header.timestamp_nanosec)/1e9,history,invariant:s.total===liabilities,worker:health.ok&&Date.now()-health.at<20000,ids};
 }
 let updating;
 const get=()=>updating ||= snapshot().then(x=>{cached=x;updated=Date.now();return x;}).finally(()=>updating=null);

@@ -6,7 +6,7 @@ let stake = 10,
   points = [],
   busy = false,
   lpMode = false,
-  toastTimer;
+  toastTimer, lastBlockReceived=0;
 const money = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     n / 1e6,
@@ -118,6 +118,13 @@ walletReady.then(() => selector.store.observable.subscribe(() => {
 function render(data) {
   const s = data.state;
   last = data;
+  if(!points.length || Date.now()-lastBlockReceived>5000) {
+    const fallback={block:data.block,t:data.blockTime || Date.now()/1000,p:s.price,priceAt:s.price_at};
+    if(fallback.p>0 && (!points.length || fallback.block>points.at(-1).block)) {
+      points.push(fallback);points=points.slice(-240);
+      $('chart-status').textContent='RPC delayed · showing latest account snapshot';
+    }
+  }
   const p = s.positions[owner()];
   $("balance").textContent = money((s.accounts[owner()]?.balance || 0));
   const price = money(points.at(-1)?.block >= data.block ? points.at(-1).p : s.price);
@@ -291,7 +298,7 @@ $('withdraw').onclick=()=>act('withdraw');
 poll();
 
 const blockStream = new EventSource('/api/blocks');
-let lastBlockReceived=0;
+
 function appendBlock(point) {
  if(!Number.isFinite(point.p)||point.p<=0||!Number.isFinite(point.t))return;
  if(points.length && point.block<=points.at(-1).block)return;
