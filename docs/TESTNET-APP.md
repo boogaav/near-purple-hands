@@ -14,7 +14,7 @@ Open http://127.0.0.1:8891. The API on 8892 is read-only and loads no keys. Vite
 
 ## Wallet flow
 
-Connect a user-controlled My NEAR Wallet on testnet. Wallet Selector retains the selected account. Register on the exchange (0.1 test NEAR non-refundable storage), then load 100 mock USDC using the balance button. The user signs transactions in their wallet. Fixture keys are never sent to the browser. The withdraw button withdraws the available trading balance to the same account; token storage registration is required.
+Connect a user-controlled Meteor Wallet on testnet. Wallet Selector retains the selected account. Register on the exchange (0.1 test NEAR non-refundable storage), then load 100 mock USDC using the balance button. The user signs transactions in their wallet. Fixture keys are never sent to the browser. The withdraw button withdraws the available trading balance to the same account; token storage registration is required.
 
 To provision a tester with mock tokens, the operator runs:
 
@@ -44,3 +44,5 @@ Entries are enabled while the worker is healthy. Oracle errors pause new entries
 - `npm run verify:testnet`: bytecode and custody reconciliation.
 
 Before public deployment: separate host, durable journal/indexing, monitored service supervisor, oracle design review and tester wallet end-to-end approval. Keep keys server-side and deploy only the built frontend assets. Do not serve the repository or `.local` directory. The contracts remain bounded testnet prototypes.
+
+MyNearWallet was removed because it no longer accepts new app connections. The wallet picker uses Meteor’s testnet connector. Trust Wallet’s documented connector lists EVM, Solana and Bitcoin, not native NEAR; holding NEAR does not establish support for this contract-signing flow.

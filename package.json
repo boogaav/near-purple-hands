@@ -27,10 +27,18 @@
     "vite": "8.3.5"
   },
   "overrides": {
-    "tar": "7.5.22"
+    "tar": "7.5.22",
+    "@meteorwallet/sdk": {
+      "nanoid": "5.1.16",
+      "query-string": {
+        "decode-uri-component": "0.5.1"
+      }
+    }
   },
   "dependencies": {
     "@near-wallet-selector/core": "10.1.4",
-    "@near-wallet-selector/my-near-wallet": "10.1.4"
+    "@near-wallet-selector/meteor-wallet": "10.1.4",
+    "@near-wallet-selector/modal-ui-js": "10.1.4",
+    "buffer": "6.0.3"
   }
 }
