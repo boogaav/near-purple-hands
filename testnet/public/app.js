@@ -53,14 +53,14 @@ function toast(text) {
 async function act(action, extra = {}) {
   if (busy) return;
   busy = true;
-  document.querySelectorAll(".hands button, #exit, #topup, #connect, #withdraw").forEach(b=>b.disabled=true);
+  document.querySelectorAll(".hands button, #exit, #topup, #connect, #register, #withdraw").forEach(b=>b.disabled=true);
   try {
     render(await api(action, extra));
   } catch (e) {
     toast(e.message);
   } finally {
     busy = false;
-    document.querySelectorAll("#topup, #connect, #withdraw").forEach(b=>b.disabled=false);
+    document.querySelectorAll("#topup, #connect, #register, #withdraw").forEach(b=>b.disabled=false);
   }
 }
 for (const [id, set] of [
@@ -102,6 +102,19 @@ $("help").onclick = () => {
   $("explanation").hidden = !on;
   $("help").setAttribute("aria-expanded", String(on));
 };
+function syncIdentity() {
+  const id = owner();
+  $('connect').hidden = !!id;
+  $('topup').hidden = !id;
+  $('reset').hidden = !id;
+  $('withdraw').hidden = !id;
+  $('register').hidden = !id || !last || !!last.state.accounts[id];
+  $('balance').textContent = id && last ? money(last.state.accounts[id]?.balance || 0) : '—';
+}
+selector.store.observable.subscribe(() => {
+  syncIdentity();
+  if (last) render(last);
+});
 function render(data) {
   const s = data.state;
   last = data;
@@ -122,7 +135,7 @@ function render(data) {
     ? "✓ Ledger reconciled"
     : "Ledger error";
   $("long").disabled = $("short").disabled = busy || !!p || !owner() || !s.accounts[owner()] || s.paused || !data.worker || Date.now()/1000-s.price_at>15;
-  $('connect').textContent=owner() ? (s.accounts[owner()] ? owner() : 'Register · 0.1 test NEAR') : 'Connect NEAR wallet';
+  syncIdentity();
   $("exit-panel").hidden = !p?.entry;
   const pending = p?.close && data.block <= p.close.until;
   $("exit").disabled = !!pending || busy;
@@ -259,5 +272,7 @@ async function poll() {
   }
 }
 $('connect').onclick=()=>act('connect');
+$('register').onclick=()=>act('connect');
+syncIdentity();
 $('withdraw').onclick=()=>act('withdraw');
 poll();

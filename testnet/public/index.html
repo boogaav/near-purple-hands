@@ -14,7 +14,8 @@
       <div class="motto">
         MY HANDS ARE CLEAN.<br /><em>THEY’RE JUST PURPLE.</em>
       </div>
-      <button id="topup" class="balance">
+      <button id="connect" class="primary header-login">Connect NEAR wallet</button>
+      <button id="topup" class="balance" hidden>
         <small>TEST TRADING BALANCE ＋</small><strong id="balance">—</strong>
       </button>
     </header>
@@ -23,7 +24,7 @@
       <span>Native NEAR contract · V5-derived engine</span>
     </div>
     <main>
-      <nav><button id="connect" class="primary">Connect NEAR wallet</button>
+      <nav><button id="register" class="primary" hidden>Register · 0.1 test NEAR</button>
         <div class="tabs">
           <button id="trader" aria-pressed="true">Trader</button
           ><button id="lp" aria-pressed="false">LP</button>
@@ -142,7 +143,7 @@
     </main>
     <footer>
       <span>purplehands.wtf · NEAR fork · Testnet preview</span
-      ><button id="withdraw">Withdraw available mock USDC</button><button id="reset">Sign out</button
+      ><button id="withdraw" hidden>Withdraw available mock USDC</button><button id="reset" hidden>Sign out</button
       ><a href="https://docs.near.org/" target="_blank" rel="noopener"
         >NEAR documentation ↗</a
       >
