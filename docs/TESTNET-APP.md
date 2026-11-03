@@ -46,3 +46,9 @@ Entries are enabled while the worker is healthy. Oracle errors pause new entries
 Before public deployment: separate host, durable journal/indexing, monitored service supervisor, oracle design review and tester wallet end-to-end approval. Keep keys server-side and deploy only the built frontend assets. Do not serve the repository or `.local` directory. The contracts remain bounded testnet prototypes.
 
 MyNearWallet was removed because it no longer accepts new app connections. The wallet picker uses Meteor’s testnet connector. Trust Wallet’s documented connector lists EVM, Solana and Bitcoin, not native NEAR; holding NEAR does not establish support for this contract-signing flow.
+
+## Live chart
+
+`/api/blocks` streams finalized block samples over SSE independently from wallet initialization and the slower account poll. A read-only Intear testnet RPC connection isolates chart reads from the transaction provider. Initial history uses 12 actual blocks; subsequent reads catch up at most 30 heights with bounded concurrency (8). Missing heights are skipped, not invented. The browser retains 240 samples, reconnects automatically and shows delayed/disconnected status. Resizing and price-range transitions redraw without clearing the canvas bitmap on every frame.
+
+Each point is the exchange's actual oracle price read at that exact block hash. Repeated prices are legitimate: the current trusted oracle publisher still updates every several seconds, not every block. This change does not claim subsecond oracle publication or execution. Extended outages beyond the bounded catch-up window omit history; the chart is not a permanent indexer. Typical protocol block/finality figures are 600ms / 1.2s, while provider latency and testnet conditions vary.

@@ -1,4 +1,4 @@
-import {owner,login,send,selector} from './wallet.js';
+import {owner,login,send,selector,walletReady} from './wallet.js';
 const $ = (id) => document.getElementById(id);
 let stake = 10,
   leverage = 1000,
@@ -111,31 +111,28 @@ function syncIdentity() {
   $('register').hidden = !id || !last || !!last.state.accounts[id];
   $('balance').textContent = id && last ? money(last.state.accounts[id]?.balance || 0) : '—';
 }
-selector.store.observable.subscribe(() => {
+walletReady.then(() => selector.store.observable.subscribe(() => {
   syncIdentity();
   if (last) render(last);
-});
+})).catch(e => toast("Wallet unavailable: " + e.message));
 function render(data) {
   const s = data.state;
   last = data;
   const p = s.positions[owner()];
   $("balance").textContent = money((s.accounts[owner()]?.balance || 0));
-  const price = money(s.price);
+  const price = money(points.at(-1)?.block >= data.block ? points.at(-1).p : s.price);
   if ($("price").textContent !== price) {
     $("price").textContent = price;
     $("price").classList.remove("pulse");
     void $("price").offsetWidth;
     $("price").classList.add("pulse");
   }
-  if (!points.length || points.at(-1).t !== s.price_at) {
-    points.push({ t: s.price_at, p: s.price });
-    points = points.slice(-120);
-  }
   $("ledger").textContent = data.invariant
     ? "✓ Ledger reconciled"
     : "Ledger error";
   $("long").disabled = $("short").disabled = busy || !!p || !owner() || !s.accounts[owner()] || s.paused || !data.worker || Date.now()/1000-s.price_at>15;
   syncIdentity();
+  $("performance").classList.toggle("idle",!p);
   $("exit-panel").hidden = !p?.entry;
   const pending = p?.close && data.block <= p.close.until;
   $("exit").disabled = !!pending || busy;
@@ -196,17 +193,25 @@ function render(data) {
     : "<p>No closed trades yet.</p>";
   draw();
 }
+let chartRange, animationFrame;
 function draw() {
+  cancelAnimationFrame(animationFrame);
   const canvas = $("chart"),
     r = canvas.getBoundingClientRect(),
     dpr = devicePixelRatio || 1;
-  canvas.width = r.width * dpr;
-  canvas.height = r.height * dpr;
+  if(canvas.width !== Math.round(r.width*dpr) || canvas.height !== Math.round(r.height*dpr)) {
+    canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+  }
   const c = canvas.getContext("2d");
-  c.scale(dpr, dpr);
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,r.width,r.height);
+  c.textAlign="left";
   const w = r.width,
     h = r.height;
-  if (points.length < 2) return;
+  if (!points.length) {
+    c.fillStyle='#a5a0b6';c.font='14px system-ui';c.textAlign='center';
+    c.fillText('Connecting to NEAR blocks…',w/2,h/2);return;
+  }
   const p = last?.state.positions[owner()];
   const vals = points.map((v) => v.p);
   if (p?.entry) vals.push(p.entry);
@@ -215,6 +220,11 @@ function draw() {
   const pad = Math.max((max - min) * 0.25, 2e6);
   min -= pad;
   max += pad;
+  const target={min,max};
+  if(!chartRange || matchMedia('(prefers-reduced-motion: reduce)').matches) chartRange=target;
+  else chartRange={min:chartRange.min+(min-chartRange.min)*.22,max:chartRange.max+(max-chartRange.max)*.22};
+  min=chartRange.min;max=chartRange.max;
+  if(Math.abs(min-target.min)>100 || Math.abs(max-target.max)>100) animationFrame=requestAnimationFrame(draw);
   const y = (v) => h - 28 - ((v - min) / (max - min)) * (h - 55),
     x = (t) =>
       18 +
@@ -230,7 +240,7 @@ function draw() {
   }
   c.beginPath();
   points.forEach((v, i) =>
-    i ? c.lineTo(x(v.t), y(v.p)) : c.moveTo(x(v.t), y(v.p)),
+    i && v.t-points[i-1].t < 5 ? c.lineTo(x(v.t), y(v.p)) : c.moveTo(x(v.t), y(v.p)),
   );
   c.strokeStyle = "#b793ff";
   c.lineWidth = 2.5;
@@ -247,6 +257,9 @@ function draw() {
     c.font = "11px system-ui";
     c.fillText("↓ ENTRY " + money(p.entry), 18, y(p.entry) - 10);
   }
+  c.fillStyle='#a5a0b6';c.font='11px system-ui';
+  c.fillText(new Date(points[0].t*1000).toLocaleTimeString(),18,h-6);
+  c.textAlign='right';c.fillText(new Date(points.at(-1).t*1000).toLocaleTimeString(),w-42,h-6);c.textAlign='left';
   const end = points.at(-1);
   c.fillStyle = "#b793ff";
   c.shadowColor = "#b793ff";
@@ -276,3 +289,21 @@ $('register').onclick=()=>act('connect');
 syncIdentity();
 $('withdraw').onclick=()=>act('withdraw');
 poll();
+
+const blockStream = new EventSource('/api/blocks');
+let lastBlockReceived=0;
+function appendBlock(point) {
+ if(!Number.isFinite(point.p)||point.p<=0||!Number.isFinite(point.t))return;
+ if(points.length && point.block<=points.at(-1).block)return;
+ points.push(point);points=points.slice(-240);lastBlockReceived=Date.now();
+ if(!last || point.block>=last.block) $('price').textContent=money(point.p);
+ $('chart-status').textContent=`Finalized block #${point.block.toLocaleString()} · Oracle ${Math.max(0,Math.floor(Date.now()/1000-point.priceAt))}s old`;
+ draw();
+}
+blockStream.addEventListener('history',e=>{for(const p of JSON.parse(e.data))appendBlock(p);});
+blockStream.addEventListener('block',e=>appendBlock(JSON.parse(e.data)));
+blockStream.addEventListener('health',e=>{if(!JSON.parse(e.data).ok)$('chart-status').textContent='Block feed delayed · reconnecting';});
+blockStream.onerror=()=>{$('chart-status').textContent='Block feed disconnected · reconnecting';};
+setInterval(()=>{if(lastBlockReceived&&Date.now()-lastBlockReceived>5000)$('chart-status').textContent='Waiting for fresh finalized blocks…';},1000);
+new ResizeObserver(draw).observe($('chart'));
+draw();

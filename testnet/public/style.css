@@ -492,3 +492,9 @@ footer button {
 nav { flex-wrap: wrap; }
 
 header .header-login { width: auto; padding: 18px 24px; margin: 0; flex-shrink: 0; }
+
+.chart { min-height: 320px; }
+.chart-footer { flex-wrap: wrap; gap: 8px; }
+
+#performance.idle { display: none; }
+.market .chart { margin-top: 24px; height: 48vh; }
