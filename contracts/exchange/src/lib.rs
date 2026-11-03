@@ -245,10 +245,7 @@ impl Exchange {
         max_price: U64,
     ) -> u64 {
         if self.verified_oracle.is_some() {
-            assert!(
-                [100, 500].contains(&leverage),
-                "V1 supports 100x or 500x only"
-            );
+            assert!(leverage == 100, "V1 supports 100x only");
         }
         self.require_verified_fresh();
         let id = check(self.engine.request_open(
@@ -400,7 +397,7 @@ mod tests {
         assert!(e.engine.invariant());
     }
     #[test]
-    #[should_panic(expected = "V1 supports 100x or 500x only")]
+    #[should_panic(expected = "V1 supports 100x only")]
     fn verified_v1_rejects_1000x_before_request() {
         let (mut exchange, _, _) = verified_setup();
         exchange.request_open(
@@ -408,6 +405,19 @@ mod tests {
             true,
             U64(10_000_000),
             1000,
+            U64(1),
+            U64(u64::MAX),
+        );
+    }
+    #[test]
+    #[should_panic(expected = "V1 supports 100x only")]
+    fn verified_v1_rejects_500x_before_request() {
+        let (mut exchange, _, _) = verified_setup();
+        exchange.request_open(
+            "alice.near".parse().unwrap(),
+            true,
+            U64(10_000_000),
+            500,
             U64(1),
             U64(u64::MAX),
         );

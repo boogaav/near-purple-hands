@@ -9,8 +9,7 @@
   "oracle": null,
   "exchange": null,
   "requestedLeverages": [
-    100,
-    500
+    100
   ],
   "leverageStatus": "requested-not-cleared-for-live-trading"
 }

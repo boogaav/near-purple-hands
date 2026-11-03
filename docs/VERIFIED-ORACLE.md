@@ -41,4 +41,4 @@ Remaining: independent review of the adapter/parser, authoritative current BTC/U
 
 ## V1 leverage decision
 
-The owner requested 100× and 500× for V1. The verified contract rejects other leverage choices, including 1,000×. This product selection does not relax the 5 bps confidence gate or authorize unsafe quotes. The six measured samples remain rejected. Their 8.98–12.70 bps confidence corresponds to approximately 9–13% of margin at 100× and 45–64% at 500×. Both options remain unavailable for live trading pending oracle suitability and release checks. Existing testnet demo settings are unchanged.
+The owner selected 100× only for V1. The verified contract rejects 500× and 1,000×. This selection does not relax the candidate 5 bps confidence gate. The six measured samples remain rejected: their 8.98–12.70 bps confidence corresponds to approximately 9–13% of margin at 100×. Live trading remains blocked pending sustained feed measurements, oracle suitability and release checks. The confidence threshold must be validated against liquidation economics before launch; it is not an established safety guarantee. Existing testnet demo settings are unchanged.
