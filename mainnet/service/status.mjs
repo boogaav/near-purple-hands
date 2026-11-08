@@ -1,3 +1,4 @@
+import {advance,forOwner} from './history.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 const config=JSON.parse(await readFile(new URL('../config.json',import.meta.url)));
@@ -14,6 +15,7 @@ async function poll(){
     const state=await query('get_state',{finality:'final'});
     const oracle=await query('get_oracle_config',{block_id:state.hash});
     observed={finalizedBlockHeight:state.height,checkedAtMs:Date.now(),lastObservedUs:oracle.value.last_observed_us,maxAgeUs:oracle.value.max_age_us,priceE6:state.value.price,sequence:state.value.sequence};
+    await advance(state,config.exchange);
   }finally{setTimeout(()=>poll().catch(()=>{}),2000);}
 }
 poll().catch(()=>{});
@@ -24,5 +26,5 @@ http.createServer((req,res)=>{
   if(req.method!=='GET'||url.pathname!=='/status'||owner.length<2||owner.length>64||!/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(owner)){res.writeHead(400);res.end('{}');return;}
   const available=Boolean(observed&&Date.now()-observed.checkedAtMs<=10000);
   res.writeHead(available?200:503);
-  res.end(JSON.stringify({available,network:'mainnet',exchange:config.exchange,owner,oracle:observed??null,keeperAccount:null,keeperHeartbeatMs:null,publisherHeartbeatMs:null,historyCoverage:{backfillComplete:false,indexedThroughBlock:null},settlements:[]}));
+  res.end(JSON.stringify({available,network:'mainnet',exchange:config.exchange,owner,oracle:observed??null,keeperAccount:null,keeperHeartbeatMs:null,publisherHeartbeatMs:null,...forOwner(owner)}));
 }).listen(8792,'0.0.0.0');
