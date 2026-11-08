@@ -1,4 +1,4 @@
-import {setupWalletSelector} from '@near-wallet-selector/core';
+import {internalActionToNaj,setupWalletSelector} from '@near-wallet-selector/core';
 import {setupMeteorWallet} from '@near-wallet-selector/meteor-wallet';
 import {Buffer} from 'buffer';
 import wasmUrl from '../../artifacts/near_purple_exchange_verified.wasm?url';
@@ -46,13 +46,15 @@ el('deploy').onclick = async () => {
     const hash=Buffer.from(await crypto.subtle.digest('SHA-256',code)).toString('hex');
     if (hash!==expectedHash) throw Error('Contract build hash mismatch');
     const args={token:pilot.token,guardian:pilot.owner,signer:Array.from(Buffer.from(oracle.signerHex,'hex')),signer_expires_at:oracle.signerExpiresAt,feed:oracle.candidateFeed,channel:oracle.candidateChannel,max_confidence_bps:5};
-    const tx=await wallet.signAndSendTransaction({signerId:pilot.owner,receiverId:pilot.plannedExchange,actions:[
+    const actions=[
       {type:'CreateAccount'},
       {type:'Transfer',params:{deposit:'3500000000000000000000000'}},
       {type:'AddKey',params:{publicKey:key,accessKey:{permission:'FullAccess'}}},
       {type:'DeployContract',params:{code}},
       {type:'FunctionCall',params:{methodName:'new_verified',args,gas:'100000000000000',deposit:'0'}}
-    ]});
+    ];
+    // Meteor Wallet Selector 10.1.4 accepts near-api-js actions at this boundary.
+    const tx=await wallet.signAndSendTransaction({signerId:pilot.owner,receiverId:pilot.plannedExchange,actions:actions.map(internalActionToNaj)});
     el('status').textContent='Check the final receipt on NearBlocks. '+(tx?.transaction?.hash??'');
   } catch(e) {el('status').textContent=e.message;} finally {el('deploy').disabled=false;}
 };
