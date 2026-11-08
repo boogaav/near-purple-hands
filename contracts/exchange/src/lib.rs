@@ -18,6 +18,22 @@ pub struct Exchange {
     verified_oracle: Option<pyth::Config>,
     last_verified_us: u64,
 }
+const PILOT_ACCOUNT: &str = "v1.yellowhands.near";
+const PILOT_OWNER: &str = "yellowhands.near";
+const PILOT_TOKEN: &str = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
+const PILOT_BUDGET: u64 = 120_240_000;
+const PILOT_DEPOSIT_KEY: &[u8] = b"pilot:cumulative_deposits";
+
+fn is_owner_pilot() -> bool {
+    env::current_account_id().as_str() == PILOT_ACCOUNT
+}
+
+fn pilot_deposits() -> u64 {
+    env::storage_read(PILOT_DEPOSIT_KEY)
+        .map(|bytes| u64::from_le_bytes(bytes.try_into().expect("Invalid pilot deposit record")))
+        .unwrap_or(0)
+}
+
 fn check<T>(r: Result<T, String>) -> T {
     r.unwrap_or_else(|e| env::panic_str(&e))
 }
@@ -61,6 +77,10 @@ impl Exchange {
             max_confidence_bps <= 5 || env::current_account_id().as_str().ends_with(".testnet"),
             "Wider confidence requires testnet"
         );
+        if is_owner_pilot() {
+            assert_eq!(guardian.as_str(), PILOT_OWNER, "Unexpected pilot guardian");
+            assert_eq!(token.as_str(), PILOT_TOKEN, "Unexpected pilot token");
+        }
         let config = pyth::Config {
             signer,
             expires_at: signer_expires_at,
@@ -120,6 +140,13 @@ impl Exchange {
     }
     #[payable]
     pub fn register(&mut self) {
+        if is_owner_pilot() {
+            assert_eq!(
+                env::predecessor_account_id().as_str(),
+                PILOT_OWNER,
+                "Owner pilot"
+            );
+        }
         assert!(
             env::attached_deposit() >= NearToken::from_millinear(100),
             "Attach 0.1 NEAR for bounded demo storage (non-refundable)"
@@ -138,6 +165,15 @@ impl Exchange {
             self.token,
             "Unexpected token"
         );
+        let pilot_total = if is_owner_pilot() {
+            let used = pilot_deposits();
+            if sender_id.as_str() != PILOT_OWNER || amount.0 > u128::from(PILOT_BUDGET - used) {
+                return PromiseOrValue::Value(amount);
+            }
+            Some(used + amount.0 as u64)
+        } else {
+            None
+        };
         if msg != "deposit"
             || amount.0 > u64::MAX as u128
             || self
@@ -146,6 +182,9 @@ impl Exchange {
                 .is_err()
         {
             return PromiseOrValue::Value(amount);
+        }
+        if let Some(total) = pilot_total {
+            env::storage_write(PILOT_DEPOSIT_KEY, &total.to_le_bytes());
         }
         self.event("deposit");
         PromiseOrValue::Value(U128(0))
@@ -353,6 +392,32 @@ mod tests {
         e.register();
         e
     }
+    #[test]
+    fn owner_pilot_refunds_foreign_and_over_budget_deposits() {
+        let mut exchange = setup();
+        let owner: AccountId = PILOT_OWNER.parse().unwrap();
+        exchange.engine.register(PILOT_OWNER).unwrap();
+        let mut context = VMContextBuilder::new();
+        context
+            .current_account_id(PILOT_ACCOUNT.parse().unwrap())
+            .predecessor_account_id(exchange.token.clone());
+        testing_env!(context.build());
+        for (sender, amount, refund) in [
+            ("alice.near".parse().unwrap(), 1, 1),
+            (owner.clone(), 110_000_000, 0),
+            (owner.clone(), 10_240_001, 10_240_001),
+            (owner.clone(), 10_240_000, 0),
+            (owner, 1, 1),
+        ] {
+            assert!(
+                matches!(exchange.ft_on_transfer(sender, U128(amount), "deposit".into()),
+                PromiseOrValue::Value(U128(value)) if value == refund)
+            );
+        }
+        assert_eq!(pilot_deposits(), PILOT_BUDGET);
+        assert_eq!(exchange.engine.total, PILOT_BUDGET);
+    }
+
     #[test]
     fn token_deposit_and_refund() {
         let mut e = setup();

@@ -9,7 +9,9 @@
   "oracle": null,
   "exchange": null,
   "requestedLeverages": [
-    100
+    500
   ],
-  "leverageStatus": "requested-not-cleared-for-live-trading"
+  "leverageStatus": "requested-not-cleared-for-live-trading",
+  "plannedExchange": "v1.yellowhands.near",
+  "pilotBudgetUSDC": "120.24"
 }
