@@ -18,7 +18,7 @@ pub struct Exchange {
     verified_oracle: Option<pyth::Config>,
     last_verified_us: u64,
 }
-const PILOT_ACCOUNT: &str = "v1.yellowhands.near";
+const PILOT_ACCOUNT: &str = "b59d03832dc9735013f1f8b149f811844f0a7ec2ef17682f958d86cf338f189a";
 const PILOT_OWNER: &str = "yellowhands.near";
 const PILOT_TOKEN: &str = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
 const PILOT_BUDGET: u64 = 120_240_000;
