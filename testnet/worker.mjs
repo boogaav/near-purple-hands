@@ -1,7 +1,8 @@
-import { client, ids } from '../scripts/testnet-client.mjs';
+import { client, ids, fixedPilot, runtimeDir } from '../scripts/testnet-client.mjs';
 import { priceFromTicker, keeperAction } from './policy.mjs';
 import { mkdir, appendFile, writeFile, open, unlink } from 'node:fs/promises';
-const dir = new URL('../.local/testnet-runtime/', import.meta.url);
+import { fetchSignedBtc } from './signed-btc.mjs';
+const dir = runtimeDir;
 await mkdir(dir, {recursive:true, mode:0o700});
 const lock = new URL('worker.lock', dir);
 let fd;
@@ -15,7 +16,7 @@ try {fd=await open(lock,'wx');} catch(e) {
 }
 await fd.writeFile(String(process.pid));
 let connection;
-try {connection=await client(['oracle','keeper','guardian']);} catch(e) {await fd.close();await unlink(lock);throw e;}
+try {connection=await client(fixedPilot ? ['keeper'] : ['oracle','keeper','guardian']);} catch(e) {await fd.close();await unlink(lock);throw e;}
 const {near,state,call}=connection;
 let stopping = false;
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => {stopping = true;});
@@ -34,15 +35,21 @@ try {
     try {
       const b = await near.connection.provider.block({finality:'final'});
       const now = Math.floor(Number(b.header.timestamp_nanosec)/1e9);
+      if (fixedPilot) {
+        const message = await fetchSignedBtc();
+        await send('keeper','submit_verified_price',{message});
+      } else {
       const response = await fetch('https://api.exchange.coinbase.com/products/BTC-USD/ticker', {signal:AbortSignal.timeout(6000)});
       if (!response.ok) throw Error(`Price source HTTP ${response.status}`);
       const quote = priceFromTicker(await response.json(), now);
-      let s = await state();
-      if (quote.timestamp > s.price_at) await send('oracle','publish_price',{...quote,sequence:s.sequence+1});
-      s = await state();
-      if (Date.now()/1000-s.price_at>15) throw Error('Published oracle stale');
+      let prior = await state();
+      if (quote.timestamp > prior.price_at) await send('oracle','publish_price',{...quote,sequence:prior.sequence+1});
+      prior = await state();
+      if (Date.now()/1000-prior.price_at>15) throw Error('Published oracle stale');
       // Only this explicitly started testnet worker enables new entries.
-      if (s.paused) await send('guardian','pause_entries',{paused:false});
+      if (prior.paused) await send('guardian','pause_entries',{paused:false});
+      }
+      const s = await state();
       for (const [owner,p] of Object.entries(s.positions)) {
         const block = await near.connection.provider.block({finality:'final'});
         const method = keeperAction(p,s,block.header.height,Math.floor(Number(block.header.timestamp_nanosec)/1e9));
@@ -55,11 +62,11 @@ try {
     } catch(e) {
       await log({error:e.message});
       await writeFile(new URL('health.json',dir),JSON.stringify({ok:false,at:Date.now(),error:e.message}));
-      try {if (!(await state()).paused) await send('guardian','pause_entries',{paused:true});} catch(e) {await log({error:'Pause failed: '+e.message});}
+      try {if (!fixedPilot && !(await state()).paused) await send('guardian','pause_entries',{paused:true});} catch(e) {await log({error:'Pause failed: '+e.message});}
     }
     if (process.argv.includes('--once')) break;
     await new Promise(r=>setTimeout(r,1500));
   }
 } finally {
-  try {await send('guardian','pause_entries',{paused:true});} finally {await fd.close();await unlink(lock);}
+  try {if (!fixedPilot) await send('guardian','pause_entries',{paused:true});} finally {await fd.close();await unlink(lock);}
 }

@@ -5,7 +5,7 @@ Baseline: `dc0063dca2caf0cef69d730c003958d3fdab2287`.
 | V5 element | NEAR local fork |
 | --- | --- |
 | Symmetric capped trader/LP exposure | Implemented in integer Rust engine |
-| Stakes/leverage, entry/winner/early-exit fees | Implemented with fixed local risk profile |
+| Stakes/leverage, entry/winner/early-exit fees | New entries require $10 margin and 100× leverage |
 | Fully reserved LP capital and exposure limits | Implemented; fixed $100 buffer rather than V5’s deployment-specific buffer |
 | Delayed open/close, expiry, forced settlement | Implemented; two-block delay and a 20-block fill window (more generous than pilot V5) |
 | Keeper escrow | Implemented; unused amounts refunded |

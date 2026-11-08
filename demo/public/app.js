@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
-let stake = 10,
-  leverage = 1000,
-  last,
+const margin = 10_000_000; // Six-decimal mock USDC
+const leverage = 100;
+let last,
   points = [],
   busy = false,
   lpMode = false,
@@ -46,22 +46,10 @@ async function act(action, extra = {}) {
     busy = false;
   }
 }
-for (const [id, set] of [
-  ["stakes", (n) => (stake = n)],
-  ["leverages", (n) => (leverage = n)],
-]) {
-  $(id).addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    set(Number(b.dataset.value));
-    for (const child of $(id).children)
-      child.setAttribute("aria-pressed", String(child === b));
-  });
-}
 $("long").onclick = () =>
-  act("open", { long: true, margin: stake * 1e6, leverage });
+  act("open", { long: true, margin, leverage });
 $("short").onclick = () =>
-  act("open", { long: false, margin: stake * 1e6, leverage });
+  act("open", { long: false, margin, leverage });
 $("exit").onclick = () => act("close");
 $("topup").onclick = () => act("topup");
 $("lp-add").onclick = () => act("lp_add");

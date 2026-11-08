@@ -321,17 +321,16 @@ impl Engine {
         now: u64,
         block: u64,
     ) -> Result<u64> {
+        need(
+            margin == 10 * UNIT && leverage == 100,
+            "V1 requires $10 margin at 100x",
+        )?;
         self.authorize(owner, actor, now, margin)?;
         self.fresh(now)?;
         need(!self.paused, "New entries paused")?;
         need(
             !self.positions.contains_key(owner),
             "One position per account",
-        )?;
-        need(
-            [10 * UNIT, 50 * UNIT, 100 * UNIT].contains(&margin)
-                && [100, 500, 1000].contains(&leverage),
-            "Unsupported stake or leverage",
         )?;
         need(
             min > 0 && min <= max && max <= 1_000_000 * UNIT,

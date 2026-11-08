@@ -15,7 +15,7 @@ fn open(e: &mut Engine, long: bool) {
         "alice",
         long,
         10 * UNIT,
-        1000,
+        100,
         79_000 * UNIT,
         81_000 * UNIT,
         100,
@@ -60,7 +60,7 @@ fn dust_removal_is_permissionlessly_processable() {
         "alice",
         true,
         10 * UNIT,
-        1000,
+        100,
         79_000 * UNIT,
         81_000 * UNIT,
         86501,
@@ -136,7 +136,7 @@ fn session_budget_and_revocation() {
             "mallory",
             true,
             10 * UNIT,
-            1000,
+            100,
             1,
             81_000 * UNIT,
             100,
@@ -148,7 +148,7 @@ fn session_budget_and_revocation() {
         "agent",
         true,
         10 * UNIT,
-        1000,
+        100,
         1,
         81_000 * UNIT,
         100,
@@ -171,7 +171,7 @@ fn session_budget_and_revocation() {
             "agent",
             true,
             10 * UNIT,
-            1000,
+            100,
             1,
             81_000 * UNIT,
             100,
@@ -190,7 +190,7 @@ fn delayed_fill_and_expiry() {
         "alice",
         true,
         10 * UNIT,
-        1000,
+        100,
         79_000 * UNIT,
         81_000 * UNIT,
         100,
@@ -236,7 +236,7 @@ fn entry_cannot_use_pre_request_or_same_second_price() {
         "alice",
         true,
         10 * UNIT,
-        1000,
+        100,
         79_000 * UNIT,
         81_000 * UNIT,
         100,
@@ -282,4 +282,49 @@ fn recovery_clock_uses_acceptance_time_and_resets_on_new_publication() {
     assert!(e.void_outage("alice", 7300 - 1).is_err());
     e.void_outage("alice", 7300).unwrap();
     assert!(e.invariant());
+}
+
+#[test]
+fn v1_rejects_other_trade_sizes_before_mutating_balances() {
+    let mut e = setup();
+    for (margin, leverage) in [
+        (50 * UNIT, 100),
+        (10 * UNIT - 1, 100),
+        (10 * UNIT, 500),
+        (10 * UNIT, 1000),
+    ] {
+        let balance = e.account("alice").unwrap().balance;
+        assert!(e
+            .request_open(
+                "alice",
+                "alice",
+                true,
+                margin,
+                leverage,
+                1,
+                81_000 * UNIT,
+                100,
+                1
+            )
+            .is_err());
+        assert_eq!(e.account("alice").unwrap().balance, balance);
+        assert!(e.positions.is_empty());
+    }
+}
+
+#[test]
+fn tenth_percent_move_at_100x_returns_one_dollar_before_fees() {
+    for (long, expected) in [(true, UNIT as i64), (false, -(UNIT as i64))] {
+        let mut e = setup();
+        open(&mut e, long);
+        e.publish(e.price, 139, 3, 139).unwrap();
+        e.request_close("alice", "alice", 79_000 * UNIT, 81_000 * UNIT, 140, 10)
+            .unwrap();
+        e.publish(80_080 * UNIT, 141, 4, 141).unwrap();
+        assert_eq!(
+            e.settle("alice", "keeper", 142, 12).unwrap().gross as i64,
+            expected
+        );
+        assert!(e.invariant());
+    }
 }

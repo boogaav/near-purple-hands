@@ -29,7 +29,7 @@ npm run dev
 
 Open **http://127.0.0.1:8890**. No npm dependencies are needed for the browser demo. It uses the same Rust accounting library as the NEAR contract, invoked through a local JSON-lines process. It **does not send browser actions to a blockchain**. The feed, keeper, accounts, and funds are simulated. Restarting the process resets everything; refreshing the page does not.
 
-1. Choose $10/$50/$100 and 100×/500×/1,000×. Click a hand.
+1. Click a hand to open a $10 trade at 100×.
 2. Watch entry queue for two simulated blocks, then see live price-performance P&L and an entry line.
 3. Click EXIT. After the delayed fill, see the after-fee receipt and updated balance.
 4. Switch to LP; add liquidity when the book is empty. Request a 10% removal, wait the **60-second demo** countdown, then claim into the demo LP account. The contract notice is **24 hours**.
@@ -57,7 +57,7 @@ The sandbox test creates disposable accounts and tests actual WASM execution, to
 
 - NEP-141 deposit receiver restricted to one configured six-decimal token.
 - Owner withdrawals with pre-debit, one pending request per owner, and private asynchronous refund callbacks.
-- $10/$50/$100 stakes; 100×/500×/1,000× leverage; symmetrical ±stake payout cap.
+- $10 margin and 100× leverage; symmetrical ±stake payout cap.
 - 1:1 LP reservation, 90% utilization ceiling, $100 minimum free buffer, $800k gross/$400k per-side limits.
 - Two-block delayed open/close; price bounds; permissionless fills, expiry cancellation and forced settlement.
 - 1% entry fee credited to LPs exactly once; 10% rake on the winner’s gain; 1% early-exit fee under 30 seconds, capped by available payout; $0.14 keeper escrow with unused refund.
@@ -86,3 +86,5 @@ AI assistance: OpenAI Codex helped implement and test the fork. Libraries: NEAR 
 Official references: [NEAR contracts](https://docs.near.org/), [asynchronous calls](https://docs.near.org/smart-contracts/anatomy/crosscontract), [NEP-141](https://github.com/near/NEPs/blob/master/neps/nep-0141.md), [NEAR Workspaces](https://github.com/near/near-workspaces-js).
 
 Mainnet V1 preparation and open launch blockers: [readiness review](docs/MAINNET-READINESS.md). Read-only preflight: `node scripts/preflight-mainnet.mjs`. New request storage is not compatible with an in-place upgrade of the existing testnet deployment.
+
+The fixed BTC pilot uses `purple-hands-100x-v1.testnet` and mock USDC. Start the API and worker with `npm run api:testnet` and `npm run worker:testnet`. The worker requires the local Pyth credential and forwards signed reports. Trading requires a fresh accepted report, funded LP capital and guardian activation. The older deployment and smoke script use the test publisher.

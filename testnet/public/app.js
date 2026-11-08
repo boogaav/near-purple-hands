@@ -1,8 +1,8 @@
 import {owner,login,send,selector,walletReady} from './wallet.js';
 const $ = (id) => document.getElementById(id);
-let stake = 10,
-  leverage = 1000,
-  last,
+const margin = 10_000_000; // Six-decimal mock USDC
+const leverage = 100;
+let last,
   points = [],
   busy = false,
   lpMode = false,
@@ -31,7 +31,7 @@ async function api(action, extra = {}) {
   if(!account) {await send(d.ids.exchange,'register',{},'100000000000000000000000'); return d;}
   const bounds={min_price:String(Math.floor(d.state.price*.99)),max_price:String(Math.ceil(d.state.price*1.01))};
   if(action==='open') {
-    if(!d.worker || d.state.paused || Date.now()/1000-d.state.price_at>15) throw Error('Oracle / keeper unavailable. Please wait.');
+    if(!d.worker || d.state.paused || Date.now()/1000-d.state.price_at>d.maxPriceAge) throw Error('Oracle / keeper unavailable. Please wait.');
     await send(d.ids.exchange,'request_open',{owner:id,...extra,margin:String(extra.margin),...bounds});
   } else if(action==='close') await send(d.ids.exchange,'request_close',{owner:id,...bounds});
   else if(action==='topup') {
@@ -63,22 +63,10 @@ async function act(action, extra = {}) {
     document.querySelectorAll("#topup, #connect, #register, #withdraw").forEach(b=>b.disabled=false);
   }
 }
-for (const [id, set] of [
-  ["stakes", (n) => (stake = n)],
-  ["leverages", (n) => (leverage = n)],
-]) {
-  $(id).addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    set(Number(b.dataset.value));
-    for (const child of $(id).children)
-      child.setAttribute("aria-pressed", String(child === b));
-  });
-}
 $("long").onclick = () =>
-  act("open", { long: true, margin: stake * 1e6, leverage });
+  act("open", { long: true, margin, leverage });
 $("short").onclick = () =>
-  act("open", { long: false, margin: stake * 1e6, leverage });
+  act("open", { long: false, margin, leverage });
 $("exit").onclick = () => act("close");
 $("topup").onclick = () => act("topup");
 $("lp-add").onclick = () => act("lp_add");
@@ -137,7 +125,7 @@ function render(data) {
   $("ledger").textContent = data.invariant
     ? "✓ Ledger reconciled"
     : "Ledger error";
-  $("long").disabled = $("short").disabled = busy || !!p || !owner() || !s.accounts[owner()] || s.paused || !data.worker || Date.now()/1000-s.price_at>15;
+  $("long").disabled = $("short").disabled = busy || !!p || !owner() || !s.accounts[owner()] || s.paused || !data.worker || Date.now()/1000-s.price_at>data.maxPriceAge;
   syncIdentity();
   $("performance").classList.toggle("idle",!p);
   $("exit-panel").hidden = !p?.entry;
@@ -165,7 +153,7 @@ function render(data) {
       `<small>${p ? "ENTRY REQUESTED" : "CHOOSE YOUR DIRECTION"}</small><h2>${p ? "Finding your entry…" : "Make your move."}</h2><p>${p ? "Two NEAR blocks before execution." : "Matching capital. Transparent outcomes."}</p>`;
     $("status").textContent = p
       ? "Entry queued · awaiting keeper execution"
-      : (s.paused || !data.worker ? "Oracle / keeper unavailable · entries paused" : !owner() ? "Connect your testnet wallet" : !s.accounts[owner()] ? "Register your account first" : "Ready to trade");
+      : (s.paused || !data.worker || Date.now()/1000-s.price_at>data.maxPriceAge ? "Oracle / keeper unavailable · entries paused" : !owner() ? "Connect your testnet wallet" : !s.accounts[owner()] ? "Register your account first" : "Ready to trade");
   }
   const lp = (s.accounts[owner()] || {balance:0,shares:0});
   $("lp-available").textContent = money(lp.balance);
