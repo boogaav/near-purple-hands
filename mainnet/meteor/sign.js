@@ -19,12 +19,14 @@ async function preflight() {
   if (error?.cause?.name !== 'UNKNOWN_ACCOUNT') throw Error('Could not verify exchange account status');
 }
 el('connect').onclick = async () => {
+  el('connect').disabled=true;
+  el('review').hidden=true;
+  el('status').textContent='Waiting for Meteor…';
   try {
     const selector = await setupWalletSelector({network:'mainnet',modules:[setupMeteorWallet()]});
     wallet = await selector.wallet('meteor-wallet');
-    if (!(await wallet.getAccounts()).some(a=>a.accountId===pilot.owner))
-      await wallet.signIn({contractId:pilot.owner,methodNames:['get_state']});
-    if ((await wallet.getAccounts())[0]?.accountId !== pilot.owner) throw Error('Select yellowhands.near in Meteor');
+    const accounts = await wallet.signIn({contractId:pilot.owner,methodNames:['get_state']});
+    if (accounts[0]?.accountId !== pilot.owner) throw Error('Select yellowhands.near in Meteor');
     await preflight();
     const {result} = await query({request_type:'view_access_key_list',account_id:pilot.owner});
     const keys = result.keys.filter(k=>k.access_key.permission==='FullAccess');
@@ -32,7 +34,7 @@ el('connect').onclick = async () => {
     el('key').replaceChildren(new Option('Select your public key',''),...keys.map(k=>new Option(k.public_key,k.public_key)));
     el('review').hidden=false;
     el('status').textContent='Connected to NEAR mainnet';
-  } catch(e) {el('status').textContent=e.message;}
+  } catch(e) {el('status').textContent=e.message;} finally {el('connect').disabled=false;}
 };
 el('deploy').onclick = async () => {
   el('deploy').disabled=true;
