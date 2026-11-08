@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const margin = 10_000_000; // Six-decimal mock USDC
-const leverage = 100;
+const leverage = 500;
 let last,
   points = [],
   busy = false,

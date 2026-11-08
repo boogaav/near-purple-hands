@@ -70,7 +70,7 @@ impl Config {
             "Invalid feed or channel",
         )?;
         require(
-            (1..=5).contains(&self.max_confidence_bps),
+            (1..=15).contains(&self.max_confidence_bps),
             "Invalid confidence limit",
         )
     }

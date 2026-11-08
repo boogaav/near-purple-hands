@@ -1,0 +1,15 @@
+{
+  "network": "testnet",
+  "root": "near-purple-hands-20261102.testnet",
+  "accounts": {
+    "exchange": "purple-hands-500x-v1.testnet",
+    "token": "token.near-purple-hands-20261102.testnet",
+    "oracle": "oracle.near-purple-hands-20261102.testnet",
+    "guardian": "guardian.near-purple-hands-20261102.testnet",
+    "trader": "trader.near-purple-hands-20261102.testnet",
+    "lp": "lp.near-purple-hands-20261102.testnet",
+    "keeper": "keeper.near-purple-hands-20261102.testnet"
+  },
+  "sha256": "896296ab1432100bb81529baad18f49d0d91c029340e26aa4ef2498153e82606",
+  "oracle": "pyth-pro-verified-candidate"
+}

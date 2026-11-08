@@ -322,8 +322,8 @@ impl Engine {
         block: u64,
     ) -> Result<u64> {
         need(
-            margin == 10 * UNIT && leverage == 100,
-            "V1 requires $10 margin at 100x",
+            margin == 10 * UNIT && leverage == 500,
+            "V1 requires $10 margin at 500x",
         )?;
         self.authorize(owner, actor, now, margin)?;
         self.fresh(now)?;

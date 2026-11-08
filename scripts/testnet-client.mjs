@@ -1,9 +1,9 @@
 import { connect, KeyPair, keyStores } from 'near-api-js';
 import { readFile } from 'node:fs/promises';
 import { TESTNET_RPC, paceRpc } from './testnet-rpc.mjs';
-export const fixedPilot = process.env.NEAR_TESTNET_PROFILE === '100x';
-const manifestName = fixedPilot ? 'testnet-100x.json' : 'testnet.json';
-export const runtimeDir = new URL(fixedPilot ? '../.local/testnet-100x-runtime/' : '../.local/testnet-runtime/', import.meta.url);
+export const fixedPilot = process.env.NEAR_TESTNET_PROFILE === '500x';
+const manifestName = fixedPilot ? 'testnet-500x.json' : 'testnet.json';
+export const runtimeDir = new URL(fixedPilot ? '../.local/testnet-500x-runtime/' : '../.local/testnet-runtime/', import.meta.url);
 export const manifest = JSON.parse(await readFile(new URL('../deployments/'+manifestName, import.meta.url)));
 export const ids = manifest.accounts;
 export async function client(roles = []) {

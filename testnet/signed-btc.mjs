@@ -16,7 +16,7 @@ export async function fetchSignedBtc() {
   const quote = parsed?.priceFeeds?.[0];
   if (!quote || quote.priceFeedId !== 1 || BigInt(quote.price) <= 0n) throw Error('BTC report unavailable');
   // Avoid paying test gas for ineligible reports. The contract independently checks signed bytes.
-  if (BigInt(quote.confidence)*10000n > BigInt(quote.price)*5n) throw Error('BTC uncertainty exceeds 5 bps');
+  if (BigInt(quote.confidence)*10000n > BigInt(quote.price)*15n) throw Error('BTC uncertainty exceeds 15 bps');
   if (!solana || !['base64','hex'].includes(solana.encoding)) throw Error('Missing signed BTC report');
   return Buffer.from(solana.data.replace(/^0x/,''),solana.encoding).toString('base64');
 }

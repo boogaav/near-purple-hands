@@ -57,6 +57,10 @@ impl Exchange {
         channel: u8,
         max_confidence_bps: u16,
     ) -> Self {
+        assert!(
+            max_confidence_bps <= 5 || env::current_account_id().as_str().ends_with(".testnet"),
+            "Wider confidence requires testnet"
+        );
         let config = pyth::Config {
             signer,
             expires_at: signer_expires_at,
@@ -245,7 +249,7 @@ impl Exchange {
         max_price: U64,
     ) -> u64 {
         if self.verified_oracle.is_some() {
-            assert!(leverage == 100, "V1 supports 100x only");
+            assert!(leverage == 500, "V1 supports 500x only");
         }
         self.require_verified_fresh();
         let id = check(self.engine.request_open(
@@ -397,7 +401,7 @@ mod tests {
         assert!(e.engine.invariant());
     }
     #[test]
-    #[should_panic(expected = "V1 supports 100x only")]
+    #[should_panic(expected = "V1 supports 500x only")]
     fn verified_v1_rejects_1000x_before_request() {
         let (mut exchange, _, _) = verified_setup();
         exchange.request_open(
@@ -410,14 +414,14 @@ mod tests {
         );
     }
     #[test]
-    #[should_panic(expected = "V1 supports 100x only")]
-    fn verified_v1_rejects_500x_before_request() {
+    #[should_panic(expected = "V1 supports 500x only")]
+    fn verified_v1_rejects_100x_before_request() {
         let (mut exchange, _, _) = verified_setup();
         exchange.request_open(
             "alice.near".parse().unwrap(),
             true,
             U64(10_000_000),
-            500,
+            100,
             U64(1),
             U64(u64::MAX),
         );

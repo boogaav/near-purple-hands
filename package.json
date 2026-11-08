@@ -13,8 +13,8 @@
     "verify:testnet": "node scripts/verify-testnet.mjs",
     "dev:testnet": "vite --config testnet/vite.config.js",
     "build:testnet": "vite build --config testnet/vite.config.js",
-    "api:testnet": "NEAR_TESTNET_PROFILE=100x node testnet/server.mjs",
-    "worker:testnet": "NEAR_TESTNET_PROFILE=100x node testnet/worker.mjs",
+    "api:testnet": "NEAR_TESTNET_PROFILE=500x node testnet/server.mjs",
+    "worker:testnet": "NEAR_TESTNET_PROFILE=500x node testnet/worker.mjs",
     "test:services": "node --test tests/testnet-services.mjs"
   },
   "engines": {

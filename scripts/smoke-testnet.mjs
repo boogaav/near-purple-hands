@@ -157,7 +157,7 @@ try {
       owner: ids.trader,
       long: true,
       margin: "10000000",
-      leverage: 100,
+      leverage: 500,
       min_price: "79000000000",
       max_price: "81000000000",
     });
