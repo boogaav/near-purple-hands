@@ -1,0 +1,53 @@
+# Implement one Yellowhands interface for NEAR and HyperEVM
+
+Build this in the existing Yellowhands web app. Serve the existing Yellowhands dashboard at https://yellowhands.wtf/. The wallet the user **chooses and connects** determines where their trades settle. Use the same responsive dashboard, branding, Trader / LP switch, chart, hand controls, balances, transaction history and quick actions on both backends. Keep the existing Yellowhands HyperEVM contracts and app behavior. The deliverable is the integrated homepage. The standalone NEAR LP page is an integration reference.
+
+## 1. Resolve the account before mounting a backend
+
+| User action | Active account | Settlement adapter |
+|---|---|---|
+| Continue with NEAR | Selected NEAR mainnet account in Meteor | Native NEAR exchange |
+| Continue with crypto wallet → EVM | Connected EVM address | Existing Yellowhands HyperEVM V5 |
+| Continue with email | Existing Privy embedded EVM wallet after provisioning | Existing Yellowhands HyperEVM V5 |
+
+On mobile use the same choices. Present a clear retry or wallet-opening action when Meteor is unavailable or dismissed. Do not infer a chain from an installed extension, account name or address shape. A single person can have both wallets. Email routing preserves today's embedded wallet behavior.
+
+Keep /near as a deep link to the same dashboard with NEAR preselected for disconnected visitors. Never change a connected wallet silently. If the active account is EVM and the user follows /near, offer “Switch to NEAR” and change context only after the connection succeeds. A badge next to Balance identifies “NEAR” or “HyperEVM”. In the account menu show the active account, network, switch and disconnect. Refresh restores the last chosen provider only after its SDK confirms the account. Opening the public page should never trigger a signature.
+
+## 2. Introduce a narrow adapter boundary
+
+Start at the production homepage route and its Yellowhands bootstrap. In the existing frontend checkout, inspect app/route.ts, product-pages.mjs and integrations/owned-v5/. In the NEAR repo, inspect mainnet/yellow/app.js for working Meteor and USDC calls, testnet/public/ for chart and interaction references, contracts/exchange/src/lib.rs for the ABI, and crates/engine/src/lib.rs for the actual trading rules. Use the current production revision when integrating.
+
+Have the common UI consume backend capabilities, snapshot, chart observations and transaction actions. The snapshot should carry the active backend/network/deployment/account, block height, observation time, wallet USDC, available exchange balance, LP shares and value, request or position, pending withdrawal, entry availability and reason. Expose operations for wallet funding instructions, deposit, withdraw, add/request-remove/claim liquidity, open, close and history. Keep wallet signing, fee calculations, finality, RPCs, session semantics and explorer URL building inside the specific adapter. In particular, “Hyperliquid” here means the existing Yellowhands product on HyperEVM.
+
+Use integer base units and decimal strings at transport boundaries. USDC and NEAR exchange BTC prices use six decimals. Format only at display time. Scope subscriptions, query caches, pending transaction records, history and sessions by backend + network + exchange + account. On account/network change, cancel listeners and in-flight reads, clear the old view, and discard late responses. Before every signature, verify that the signer, network, recipient contract and active account still match. A transaction already submitted stays associated with the original account. Never replay it on reconnect.
+
+## 3. Build each NEAR screen from contract state
+
+**Welcome and funding.** Connect Meteor on mainnet using Wallet Selector. Reuse the existing Meteor action conversion. Verify the exchange deployment and USDC account against mainnet/config.json. Currently only yellowhands.near can register or load funds on this pilot. Other NEAR accounts can view public vault data. Show “Owner pilot · deposits and trades unavailable for this account” before displaying a funding address or asking for signatures. Public onboarding requires a separately reviewed contract release.
+
+Keep “Top up wallet” (receive native NEAR-chain USDC into the wallet) separate from “Load funds” (move USDC into the exchange balance). Show NEAR gas and storage requirements before signing. When needed, call register on the exchange with 0.1 NEAR non-refundable storage. Check storage_balance_of on the USDC contract for the recipient exchange. If absent, read storage_balance_bounds and call storage_deposit for the exchange. Deposit via ft_transfer_call on USDC with receiver_id = exchange, amount as a decimal string, msg = "deposit" and one yoctoNEAR. Check the resolved accepted amount and updated finalized exchange balance, including full or partial refunds. The owner pilot caps cumulative accepted deposits at 120.24 USDC. Withdrawing does not reset the cap. Keep Base bridges, HyperEVM gas sponsorship and EVM approvals in the EVM flow.
+
+**LP.** Reuse the existing vault card and action layout. Show available exchange USDC, total vault capital and the user's share value (user shares × capital ÷ total shares, with a zero-supply guard). Allocate from exchange balance with add_liquidity. Show the amount to review and require an explicit wallet signature. Do not prompt someone who already owns the initial 110 USDC position to seed the pool again. Remove via request_remove with shares, show redemption.ready_at as local time and countdown, allow cancel_remove when eligible, and call process_remove when eligible. Settlement credits the exchange balance. A separate withdraw sends USDC to the wallet. Check get_pending_withdrawal and the token transfer callback before displaying “Received in wallet”. Keep vault P&L distinct from individual LP P&L.
+
+**Trader.** Display the deployed NEAR preset of 10 USDC margin × 500. The engine needs 10.24 USDC available to request an entry (10 margin + 0.10 entry fee + 0.14 escrow). Explain the breakdown before signing. Show the current blocking reason: unsupported account, missing balance, paused entries, unavailable price, keeper unavailable or insufficient vault capacity. Status and recovery for an existing position take priority over new-entry onboarding.
+
+Wire UP/DOWN to request_open(owner, long, margin, leverage, min_price, max_price), with bounded prices shown in the review. Owner-direct actions are supported. Do not insert an EVM session-approval step for NEAR. After signature show request submitted → waiting for fill → position open. A confirmed request is not a fill. Show the entry marker only when entry is populated. Wire EXIT to request_close, then display waiting for settlement until the finalized settled outcome. If the user returns after a disconnect, reconcile the request by account, position ID, block window and transaction hash before permitting another action. Expired unfilled opens can be cancelled. An expired close can require a fresh signed close while the position remains open.
+
+**Chart, P&L and history.** Keep the pulsing dot and open-position focus layout. Plot timestamps and execution markers from the selected backend. Apply visual interpolation only to animation. Use the latest accepted oracle price for the NEAR execution estimate. A separate market preview needs a source label. Show “Waiting for verified BTC price” for missing observations and “Price delayed” for stale ones. Do not show zero P&L when the mark is unknown. Clearly distinguish before-fee performance, estimated exit proceeds and actual net P&L. Index finalized settlement events for history and share cards. Use the active network's explorer for each receipt.
+
+## 4. Wire the NEAR production dependencies
+
+Run a read-only state service, signed Pyth publisher and keeper on an always-on host. Keep signing keys and provider credentials server-side. Read get_oracle_config from the deployed exchange. Submit signed payloads through submit_verified_price and verify the accepted sequence and timestamp on-chain. Respect the deployed confidence and freshness checks. Never use the testnet worker's single-source publish_price path to settle mainnet trades. Expose accepted-price age, last finalized block, publisher and keeper heartbeat, and the reason the latest observation was rejected.
+
+The keeper must be a registered account for fills. Resolve this under the owner-only pilot before enabling order entry. Poll from finalized state, require a newer post-request oracle observation within signed price bounds, and honor the contract's block window (request block +2 through +22). Execute fill_open and settle with receipt reconciliation. Recover after restart, cancel expired entries where eligible, and surface expired close requests for the trader. Keep entry readiness, exit recovery and wallet withdrawal availability independently derived.
+
+At the last recorded mainnet check (block 223660758), entries were unpaused, the vault held 110 USDC, yellowhands.near owned all LP shares, the account had zero available exchange balance and the contract price was zero. These are historical observations. Read live state at runtime. “Entries enabled” alone is insufficient to show a working Trade button.
+
+## 5. Test and ship
+
+- Test a clean visit, both providers installed, cancelled login, reconnect, wrong network, wallet changed mid-signature and switching modes with a slow response outstanding. Verify balances, chart, activity and explorer links always belong to the displayed account.
+- Regress existing EVM wallet and email/Privy onboarding, deposits, trades, LP and recovery on the shared homepage.
+- Exercise NEAR owner and non-owner paths. Test registration already paid, deposit refunded, existing LP shares, delayed removal, zero/stale/broad-confidence prices, keeper offline, pending entry, expired close, reload during settlement and successful final receipt. Use testnet or fixtures for repeatable transactions.
+- On mobile and desktop verify both entry paths into the same shell, accessible login controls, the chart, focus/exit view and the LP flow. Test /near directly and after refresh. Preserve the existing Purplehands hostname behavior on shared hosting.
+- Push code and tests to the relevant GitHub repos. Deploy the shared homepage and /near alias, verify both URLs on the live domain, and report exact commits, deployed addresses, tested flows, and outstanding blockers. Enable live trade controls only when dependency health and contract state permit execution. Treat the first funded mainnet trade as a separately user-signed action.
