@@ -24,10 +24,18 @@ async function send(methodName,args){
 }
 async function poll(){
   health.keeperHeartbeatMs=null;
+  health.stage='provider_read';
+  const key=(await readFile('/run/operator/pyth-api-key','utf8')).trim();
+  const res=await fetch('https://pyth-lazer.dourolabs.app/v1/latest_price',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({priceFeedIds:[1],channel:'fixed_rate@200ms',formats:['solana'],properties:['price','publisherCount','exponent','confidence','marketSession','feedUpdateTimestamp']}),signal:AbortSignal.timeout(4000)});
+  if(!res.ok){health.publisherStatus='provider_http_'+res.status;return;}
+  const {parsed,solana}=await res.json(),q=parsed.priceFeeds[0];
+  health.publisherHeartbeatMs=Date.now();health.confidenceBps=Number(BigInt(q.confidence)*1000000n/BigInt(q.price))/100;
+  health.stage='near_rpc';
   const block=await provider.block({finality:'final'}),blockId={blockId:block.header.hash};
   const view=methodName=>account.viewFunction({contractId:config.exchange,methodName,args:{},...blockId});
   const [oracle,state,authorized]=await Promise.all([view('get_oracle_config'),view('get_state'),auth(block.header.hash).catch(()=>false)]);
   const registered=authorized&&Object.hasOwn(state.accounts,config.owner);
+  health.keeperStatus=registered?'authorized':'authorization_unverified';
   if(registered){
     for(const [owner,position] of Object.entries(state.positions)){
       const method=keeperAction(position,state,block.header.height,Math.floor(Date.now()/1000));
@@ -35,11 +43,6 @@ async function poll(){
     }
     health.keeperHeartbeatMs=Date.now();
   }
-  const key=(await readFile('/run/operator/pyth-api-key','utf8')).trim();
-  const res=await fetch('https://pyth-lazer.dourolabs.app/v1/latest_price',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({priceFeedIds:[1],channel:'fixed_rate@200ms',formats:['solana'],properties:['price','publisherCount','exponent','confidence','marketSession','feedUpdateTimestamp']}),signal:AbortSignal.timeout(4000)});
-  if(!res.ok)throw Error('Provider unavailable');
-  const {parsed,solana}=await res.json(),q=parsed.priceFeeds[0];
-  health.publisherHeartbeatMs=Date.now();health.confidenceBps=Number(BigInt(q.confidence)*1000000n/BigInt(q.price))/100;
   if(q.priceFeedId!==oracle.feed||BigInt(q.price)<=0n||BigInt(q.confidence)*10000n>BigInt(q.price)*BigInt(oracle.max_confidence_bps)){health.publisherStatus='confidence_rejected';return;}
   if(!registered){health.publisherStatus='operator_authorization_required';return;}
   const age=Date.now()*1000-Number(parsed.timestampUs);
@@ -49,7 +52,7 @@ async function poll(){
   health.publisherStatus='submitted';
 }
 for(;;){
-  try{await poll();}catch{health.publisherStatus='unavailable';}
+  try{await poll();}catch{health.publisherStatus=health.stage+'_unavailable';}
   await writeFile('/data/operator.tmp',JSON.stringify(health));await rename('/data/operator.tmp','/data/operator.json');
   await new Promise(r=>setTimeout(r,2000));
 }
