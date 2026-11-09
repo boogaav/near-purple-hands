@@ -31,14 +31,20 @@ async function poll(){
   const {parsed,solana}=await res.json(),q=parsed.priceFeeds[0];
   health.publisherHeartbeatMs=Date.now();health.confidenceBps=Number(BigInt(q.confidence)*1000000n/BigInt(q.price))/100;
   health.stage='near_rpc';
-  const block=await provider.block({finality:'final'}),blockId={blockId:block.header.hash};
-  const view=methodName=>account.viewFunction({contractId:config.exchange,methodName,args:{},...blockId});
-  const [oracle,state,authorized]=await Promise.all([view('get_oracle_config'),view('get_state'),auth(block.header.hash).catch(()=>false)]);
+  async function view(method_name, at) {
+    const response=await fetch(rpc,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'query',params:{request_type:'call_function',account_id:config.exchange,method_name,args_base64:'e30=',...at}}),signal:AbortSignal.timeout(4500)});
+    const data=await response.json();
+    if(!data.result?.result)throw Error('View unavailable');
+    return {value:JSON.parse(Buffer.from(data.result.result)),hash:data.result.block_hash,height:data.result.block_height};
+  }
+  const finalized=await view('get_oracle_config',{finality:'final'}),oracle=finalized.value;
+  const authorized=await auth(finalized.hash).catch(()=>false);
+  const state=authorized?(await view('get_state',{block_id:finalized.hash})).value:null;
   const registered=authorized&&Object.hasOwn(state.accounts,config.owner);
   health.keeperStatus=registered?'authorized':'authorization_unverified';
   if(registered){
     for(const [owner,position] of Object.entries(state.positions)){
-      const method=keeperAction(position,state,block.header.height,Math.floor(Date.now()/1000));
+      const method=keeperAction(position,state,finalized.height,Math.floor(Date.now()/1000));
       if(method==='cancel_open'||(method&&Date.now()*1000-oracle.last_observed_us<=oracle.max_age_us))await send(method,{owner});
     }
     health.keeperHeartbeatMs=Date.now();
