@@ -1,0 +1,13 @@
+{
+  "chainId": 999,
+  "emitter": "0xb4272574a3227465e70d6bdcb2b95da457965832",
+  "deploymentTransaction": "0xf607b002bbbf85f503b37c38a8c0597890af13fd72c90a9e1eeb66dbf78ffb20",
+  "clock": "Local receipt time minus source block timestamp (whole seconds). Includes polling and network time.",
+  "wormholeScanSequences": [0, 1, 2],
+  "wormholeScanObservedAgeMs": [3438, 2811, 2900],
+  "guardianEndpoint": "https://wormhole-v2-mainnet-api.chainlayer.network",
+  "guardianSequences": [3, 4, 5],
+  "guardianObservedAgeMs": [2727, 2778, 3057],
+  "requiredMaxAgeMs": 2000,
+  "nearSettlementTested": false
+}
