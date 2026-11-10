@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {connect,keyStores,KeyPair,transactions} from 'near-api-js';
+const config=JSON.parse(await readFile('mainnet/config.json'));
+const id=config.exchange;
+const key=KeyPair.fromString((await readFile('.local/pilot-mainnet.key','utf8')).trim());
+assert.equal(Buffer.from(key.getPublicKey().data).toString('hex'),id);
+const keys=new keyStores.InMemoryKeyStore();await keys.setKey('mainnet',id,key);
+const near=await connect({networkId:'mainnet',nodeUrl:'https://rpc.mainnet.fastnear.com',keyStore:keys});
+const provider=near.connection.provider;
+assert.equal((await provider.status()).chain_id,'mainnet');
+const account=await near.account(id);
+async function inspect(){
+  const code=await provider.query({request_type:'view_code',account_id:id,finality:'final'});
+  const view=async method_name=>JSON.parse(Buffer.from((await provider.query({request_type:'call_function',account_id:id,block_id:code.block_hash,method_name,args_base64:'e30='})).result));
+  const storage=await provider.query({request_type:'view_state',account_id:id,block_id:code.block_hash,prefix_base64:''});
+  const stateDigest=createHash('sha256').update(JSON.stringify(storage.values.map(r=>[r.key,r.value]).sort())).digest('hex');
+  return {stateDigest,codeHash:code.hash,sha256:createHash('sha256').update(Buffer.from(code.code_base64,'base64')).digest('hex'),height:code.block_height,state:await view('get_state'),view};
+}
+const before=await inspect(), wasm=await readFile('artifacts/near_purple_exchange_verified.wasm');
+const target=createHash('sha256').update(wasm).digest('hex');
+assert.equal(before.sha256,config.pilotWasmSha256);assert.notEqual(target,before.sha256);
+const receipt=await account.signAndSendTransaction({receiverId:id,actions:[transactions.deployContract(wasm)]});
+const hash=receipt.transaction.hash;
+console.log('Submitted',hash);
+const final=await provider.txStatus(hash,id,'FINAL');
+assert.ok(final.status.SuccessValue!==undefined && final.receipts_outcome.every(r=>!r.outcome.status.Failure));
+const after=await inspect();assert.equal(after.sha256,target);
+const policy=await after.view('get_deposit_policy');assert.deepEqual(policy,{version:1,cumulative_cap:null});
+assert.deepEqual(after.state,before.state);assert.equal(after.stateDigest,before.stateDigest);
+const evidence={network:'mainnet',account:id,hash,block:after.height,codeHash:after.codeHash,sha256:target,policy,stateDigest:after.stateDigest,stateUnchanged:true};
+await writeFile('deployments/mainnet-deposit-policy-v1.json',JSON.stringify(evidence,null,2)+'\n');
+config.pilotWasmSha256=target;delete config.pilotBudgetUSDC;
+await writeFile('mainnet/config.json',JSON.stringify(config,null,2)+'\n');
+console.log(evidence);

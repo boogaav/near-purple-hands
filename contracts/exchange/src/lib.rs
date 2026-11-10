@@ -21,17 +21,8 @@ pub struct Exchange {
 const PILOT_ACCOUNT: &str = "b59d03832dc9735013f1f8b149f811844f0a7ec2ef17682f958d86cf338f189a";
 const PILOT_OWNER: &str = "yellowhands.near";
 const PILOT_TOKEN: &str = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
-const PILOT_BUDGET: u64 = 120_240_000;
-const PILOT_DEPOSIT_KEY: &[u8] = b"pilot:cumulative_deposits";
-
 fn is_owner_pilot() -> bool {
     env::current_account_id().as_str() == PILOT_ACCOUNT
-}
-
-fn pilot_deposits() -> u64 {
-    env::storage_read(PILOT_DEPOSIT_KEY)
-        .map(|bytes| u64::from_le_bytes(bytes.try_into().expect("Invalid pilot deposit record")))
-        .unwrap_or(0)
 }
 
 fn check<T>(r: Result<T, String>) -> T {
@@ -165,26 +156,19 @@ impl Exchange {
             self.token,
             "Unexpected token"
         );
-        let pilot_total = if is_owner_pilot() {
-            let used = pilot_deposits();
-            if sender_id.as_str() != PILOT_OWNER || amount.0 > u128::from(PILOT_BUDGET - used) {
-                return PromiseOrValue::Value(amount);
-            }
-            Some(used + amount.0 as u64)
-        } else {
-            None
-        };
-        if msg != "deposit"
-            || amount.0 > u64::MAX as u128
+        let custody = self
+            .withdrawals
+            .values()
+            .fold(u128::from(self.engine.total), |sum, n| sum + u128::from(*n));
+        if (is_owner_pilot() && sender_id.as_str() != PILOT_OWNER)
+            || msg != "deposit"
+            || amount.0 > u128::from(u64::MAX).saturating_sub(custody)
             || self
                 .engine
                 .deposit(sender_id.as_str(), amount.0 as u64)
                 .is_err()
         {
             return PromiseOrValue::Value(amount);
-        }
-        if let Some(total) = pilot_total {
-            env::storage_write(PILOT_DEPOSIT_KEY, &total.to_le_bytes());
         }
         self.event("deposit");
         PromiseOrValue::Value(U128(0))
@@ -345,6 +329,9 @@ impl Exchange {
         check(self.engine.void_outage(owner.as_str(), now()));
         self.event("void");
     }
+    pub fn get_deposit_policy(&self) -> near_sdk::serde_json::Value {
+        near_sdk::serde_json::json!({"version":1,"cumulative_cap":null})
+    }
     pub fn get_state(&self) -> Engine {
         self.engine.clone()
     }
@@ -393,7 +380,7 @@ mod tests {
         e
     }
     #[test]
-    fn owner_pilot_refunds_foreign_and_over_budget_deposits() {
+    fn owner_pilot_accepts_deposits_past_old_cap_and_refunds_foreign_wallets() {
         let mut exchange = setup();
         let owner: AccountId = PILOT_OWNER.parse().unwrap();
         exchange.engine.register(PILOT_OWNER).unwrap();
@@ -405,17 +392,27 @@ mod tests {
         for (sender, amount, refund) in [
             ("alice.near".parse().unwrap(), 1, 1),
             (owner.clone(), 110_000_000, 0),
-            (owner.clone(), 10_240_001, 10_240_001),
+            (owner.clone(), 10_240_001, 0),
             (owner.clone(), 10_240_000, 0),
-            (owner, 1, 1),
+            (owner, 1, 0),
         ] {
             assert!(
                 matches!(exchange.ft_on_transfer(sender, U128(amount), "deposit".into()),
                 PromiseOrValue::Value(U128(value)) if value == refund)
             );
         }
-        assert_eq!(pilot_deposits(), PILOT_BUDGET);
-        assert_eq!(exchange.engine.total, PILOT_BUDGET);
+        assert!(exchange.get_deposit_policy()["cumulative_cap"].is_null());
+        assert_eq!(exchange.engine.total, 130_480_002);
+        // Reserve space for a pending withdrawal that may have to be refunded.
+        exchange.withdrawals.insert(PILOT_OWNER.parse().unwrap(), 3);
+        let headroom = u64::MAX - exchange.engine.total - 3;
+        for (amount, refund) in [(u128::MAX, u128::MAX), (u128::from(headroom), 0), (1, 1)] {
+            assert!(
+                matches!(exchange.ft_on_transfer(PILOT_OWNER.parse().unwrap(), U128(amount), "deposit".into()), PromiseOrValue::Value(U128(value)) if value == refund)
+            );
+        }
+        exchange.engine.restore_withdrawal(PILOT_OWNER, 3);
+        assert_eq!(exchange.engine.total, u64::MAX);
     }
 
     #[test]

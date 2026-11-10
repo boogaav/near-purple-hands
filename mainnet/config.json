@@ -13,7 +13,6 @@
   ],
   "leverageStatus": "requested-not-cleared-for-live-trading",
   "plannedExchange": "b59d03832dc9735013f1f8b149f811844f0a7ec2ef17682f958d86cf338f189a",
-  "pilotBudgetUSDC": "120.24",
-  "pilotWasmSha256": "d4063d5175d8dad4c0552d1a865bffc7953f7f74efadb08d744bd4d4b41ea200",
+  "pilotWasmSha256": "951eacb77b09fcebb6228d620162a48813f51197bed66a88147d17c450006cd8",
   "deploymentTransaction": "46XDUa4v4AkX2bCzT7GddwPXV9JVcThXqMtqVHYuBnNW"
 }

@@ -1,0 +1,14 @@
+{
+  "network": "mainnet",
+  "account": "b59d03832dc9735013f1f8b149f811844f0a7ec2ef17682f958d86cf338f189a",
+  "hash": "9vY2gNEQsEpt74RuwzjAXE6jMcVEiSdLauokL8rGQpup",
+  "block": 223863594,
+  "codeHash": "B36soCv1gwvTNrSxVFA5JpsK6gsoa6mFQAcnyXD999cB",
+  "sha256": "951eacb77b09fcebb6228d620162a48813f51197bed66a88147d17c450006cd8",
+  "policy": {
+    "version": 1,
+    "cumulative_cap": null
+  },
+  "stateDigest": "eddc25bae496c906d45825506c295c3d21ebd571a9282b3e00254659ebe78865",
+  "stateUnchanged": true
+}

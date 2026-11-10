@@ -146,8 +146,8 @@ impl Engine {
     pub fn deposit(&mut self, who: &str, n: u64) -> Result<()> {
         self.account(who)?;
         need(
-            n > 0 && n <= 1_000_000 * UNIT && self.total + n <= 1_000_000 * UNIT,
-            "Deposit cap",
+            n > 0 && self.total.checked_add(n).is_some(),
+            "Deposit exceeds accounting range",
         )?;
         self.credit(who, n);
         self.total += n;
@@ -248,8 +248,13 @@ impl Engine {
         let minted = if self.shares == 0 {
             n
         } else {
-            mul(n, self.shares, self.capital)
+            u64::try_from(u128::from(n) * u128::from(self.shares) / u128::from(self.capital))
+                .map_err(|_| "Share supply overflow")?
         };
+        need(
+            self.shares.checked_add(minted).is_some(),
+            "Share supply overflow",
+        )?;
         need(minted > 0, "Deposit too small")?;
         self.debit(who, n)?;
         self.capital += n;
