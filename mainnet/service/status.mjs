@@ -1,11 +1,10 @@
+import {queryNear} from './rpc.mjs';
 import {advance,forOwner} from './history.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 const config=JSON.parse(await readFile(new URL('../config.json',import.meta.url)));
-const rpc='https://rpc.mainnet.fastnear.com';
 async function query(method,block){
-  const response=await fetch(rpc,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'query',params:{request_type:'call_function',account_id:config.exchange,method_name:method,args_base64:'e30=',...block}}),signal:AbortSignal.timeout(4000)});
-  const {result}=await response.json();
+  const {result}=await queryNear({request_type:'call_function',account_id:config.exchange,method_name:method,args_base64:'e30=',...block});
   if(!result?.result)throw Error('NEAR view unavailable');
   return {height:result.block_height,hash:result.block_hash,value:JSON.parse(Buffer.from(result.result))};
 }

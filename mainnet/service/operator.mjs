@@ -1,24 +1,29 @@
+import {queryNear} from './rpc.mjs';
 import {connect,KeyPair,keyStores} from 'near-api-js';
 import {createPrivateKey} from 'node:crypto';
 import {readFile,writeFile,rename} from 'node:fs/promises';
 import {keeperAction} from '../../testnet/policy.mjs';
 import config from '../config.json' with {type:'json'};
-const rpc='https://rpc.mainnet.fastnear.com';
 const secret=createPrivateKey(await readFile('/run/operator/keeper.pem')).export({format:'jwk'});
 const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function base58(bytes){let n=BigInt('0x'+bytes.toString('hex')),out='';while(n){out=alphabet[Number(n%58n)]+out;n/=58n;}return '1'.repeat(bytes.findIndex(x=>x!==0))+out;}
 const pair=KeyPair.fromString('ed25519:'+base58(Buffer.concat([Buffer.from(secret.d,'base64url'),Buffer.from(secret.x,'base64url')])));
 const store=new keyStores.InMemoryKeyStore();await store.setKey('mainnet',config.owner,pair);
-const near=await connect({networkId:'mainnet',nodeUrl:rpc,keyStore:store});
-const provider=near.connection.provider,account=await near.account(config.owner);
+let signerRpc;
 const required=['submit_verified_price','fill_open','settle','cancel_open'];
 const health={keeperAccount:config.owner,keeperHeartbeatMs:null,publisherHeartbeatMs:null,publisherStatus:'starting'};
 const auth=async block=>{
-  const key=await provider.query({request_type:'view_access_key',account_id:config.owner,public_key:pair.getPublicKey().toString(),block_id:block});
-  const permission=key.permission?.FunctionCall;
+  const {result,url}=await queryNear({request_type:'view_access_key_list',account_id:config.owner,block_id:block});
+  signerRpc=url;
+  const key=result.keys.find(entry=>entry.public_key===pair.getPublicKey().toString());
+  if(!key){health.keeperStatus='key_missing';return false;}
+  health.keeperStatus='permission_mismatch';
+  const permission=key.access_key.permission?.FunctionCall;
   return permission?.receiver_id===config.exchange&&BigInt(permission.allowance??0)>0n&&permission.method_names.length===required.length&&required.every(m=>permission.method_names.includes(m));
 };
 async function send(methodName,args){
+  const near=await connect({networkId:'mainnet',nodeUrl:signerRpc,keyStore:store});
+  const account=await near.account(config.owner);
   const tx=await account.functionCall({contractId:config.exchange,methodName,args,gas:50000000000000n,attachedDeposit:0n});
   if(tx.status?.Failure||tx.receipts_outcome.some(r=>r.outcome.status?.Failure))throw Error('Contract rejected transaction');
 }
@@ -32,16 +37,16 @@ async function poll(){
   health.publisherHeartbeatMs=Date.now();health.confidenceBps=Number(BigInt(q.confidence)*1000000n/BigInt(q.price))/100;
   health.stage='near_rpc';
   async function view(method_name, at) {
-    const response=await fetch(rpc,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'query',params:{request_type:'call_function',account_id:config.exchange,method_name,args_base64:'e30=',...at}}),signal:AbortSignal.timeout(4500)});
-    const data=await response.json();
-    if(!data.result?.result)throw Error('View unavailable');
+    const data=await queryNear({request_type:'call_function',account_id:config.exchange,method_name,args_base64:'e30=',...at});
+    health.readRpc=data.url;
     return {value:JSON.parse(Buffer.from(data.result.result)),hash:data.result.block_hash,height:data.result.block_height};
   }
   const finalized=await view('get_oracle_config',{finality:'final'}),oracle=finalized.value;
-  const authorized=await auth(finalized.hash).catch(()=>false);
+  health.keeperStatus='authorization_unverified';
+  const authorized=await auth(finalized.hash);
   const state=authorized?(await view('get_state',{block_id:finalized.hash})).value:null;
   const registered=authorized&&Object.hasOwn(state.accounts,config.owner);
-  health.keeperStatus=registered?'authorized':'authorization_unverified';
+  if(authorized)health.keeperStatus=registered?'authorized':'registration_missing';
   if(registered){
     for(const [owner,position] of Object.entries(state.positions)){
       const method=keeperAction(position,state,finalized.height,Math.floor(Date.now()/1000));
