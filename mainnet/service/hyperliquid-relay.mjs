@@ -127,8 +127,9 @@ async function cancelExpiredEntries() {
 let completed=0;
 while(!stopped && (continuous || completed<limit)) {
     try { await step(); completed++; }
-    catch {
-        await record({keeperHeartbeatMs:null,entryReady:false,publisherStatus:stage+'_unavailable'});
+    catch (error) {
+        console.error('Relay failure',stage,String(error?.type??error?.name??'Error'),String(error?.message??'').slice(0,240));
+        await record({keeperHeartbeatMs:null,entryReady:false,publisherStatus:error?.type==='NotEnoughAllowance'?'near_gas_allowance_low':stage+'_unavailable'});
         try { await cancelExpiredEntries(); } catch { /* Preserve unavailable status until recovery. */ }
         if(!continuous) { process.exitCode=1; break; }
         await sleep(3000);
