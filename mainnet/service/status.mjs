@@ -1,7 +1,7 @@
 import {queryNear} from './rpc.mjs';
 import {advance,forOwner} from './history.mjs';
 import http from 'node:http';
-import {readFile} from 'node:fs/promises';
+import {readFile,writeFile} from 'node:fs/promises';
 const config=JSON.parse(await readFile(new URL('../config.json',import.meta.url)));
 async function query(method,block){
   const {result}=await queryNear({request_type:'call_function',account_id:config.exchange,method_name:method,args_base64:'e30=',...block});
@@ -9,6 +9,7 @@ async function query(method,block){
   return {height:result.block_height,hash:result.block_hash,value:JSON.parse(Buffer.from(result.result))};
 }
 let observed;
+let activityAt=0;
 async function poll(){
   try{
     const state=await query('get_state',{finality:'final'});
@@ -23,6 +24,10 @@ http.createServer(async (req,res)=>{
   const owner=url.searchParams.get('owner')??'';
   res.setHeader('cache-control','no-store');res.setHeader('content-type','application/json');
   if(req.method!=='GET'||url.pathname!=='/status'||owner.length<2||owner.length>64||!/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(owner)){res.writeHead(400);res.end('{}');return;}
+  if(owner===config.owner && Date.now()-activityAt>5000){
+    activityAt=Date.now();
+    try{await writeFile('/data/activity.txt',String(activityAt),{mode:0o600});}catch{}
+  }
   const available=Boolean(observed&&Date.now()-observed.checkedAtMs<=10000);
   let operator={};
   try{operator=JSON.parse(await readFile('/data/operator.json','utf8'));}catch{}

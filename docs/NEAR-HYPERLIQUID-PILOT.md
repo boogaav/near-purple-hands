@@ -1,6 +1,6 @@
 # NEAR queued Hyperliquid pilot
 
-Status: candidate built, exchange activation pending. Restricted HyperEVM emitter is deployed at the address in deployments/hyperevm-btc-restricted.json.
+Status: activated on NEAR mainnet on 2026-11-11; owner trading test remains outstanding. Activation transaction: 777WX9VEPKuYAMwtRT7qY3Gev3jKm8QeGVhPHcGJZbXH. USDC ledger preservation checks passed. Restricted HyperEVM emitter is deployed at the address in deployments/hyperevm-btc-restricted.json.
 
 The adapter uses contract.wormhole_crypto.near to authenticate VAAs and pins the HyperEVM chain, emitter, market, payload and consistency level. It accepts quotes in source sequence order. Each accepted quote automatically attempts entry and settlement for all pilot positions. Existing USDC ledger serialization is preserved.
 
@@ -21,7 +21,7 @@ Activation:
 2. Run scripts/activate-hyperliquid-mainnet.mjs for the preflight and ledger backup.
 3. With the relay ready, run the same script with ACTIVATE_HYPERLIQUID=yes. It deploys the WASM and activates the pinned feed in one transaction, requires no existing positions, and verifies ledger preservation.
 4. Run mainnet/service/hyperliquid-relay.mjs with HYPERLIQUID_SIGNER_FILE and NEAR_RELAY_KEY_FILE. RELAY_STATUS_FILE must point to the status service's operator.json.
-5. The relay is currently a bounded validation runner (20 quotes by default, 100 maximum). Continuous operation, restart supervision and reserve-budget policy must be completed before enabling a user test.
+5. Set RELAY_CONTINUOUS=true for the supervised cloud relay. RELAY_ACTIVITY_FILE enables idle sleep after 30 seconds without owner status requests, unless a position exists. The relay key permits only submit_hyperliquid_price and cancel_open, with a 0.25 NEAR allowance. Source gas is capped at 0.5 gwei, capture gas at 250,000 and message fee at 0.000001 HYPE. New-entry heartbeat is disabled below 20 conservative capture budgets. This is a limited owner-test reserve, not a public-service funding guarantee.
 6. Verify complete entry and exit receipts and publish the frontend compatibility change before declaring the pilot ready.
 
-Remaining: continuous cloud relay deployment, full live exchange verification, production frontend publication, and measured click-to-settlement latency. The cloud host SSH connection timed out during preparation.
+Cloud relay and frontend v175 are deployed. Live exchange proofs advanced through source sequences 1–3; transaction DRMmVTSp1AHBDL5E1YXbYJsxMaA8qGRv9mbkzEzqMV9v accepted sequence 3. Observed quote age at confirmation was approximately 6.7–7 seconds. Relay returned to idle with zero container restarts. Remaining: owner-signed real entry/exit test and measured click-to-settlement latency. No real user trade was placed during deployment. The reserve needs monitoring and replenishment before extended testing.
