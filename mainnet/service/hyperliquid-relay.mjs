@@ -105,7 +105,13 @@ async function step() {
     stage = 'near_submit';
     const tx = await signer.functionCall({contractId:config.exchange,methodName:'submit_hyperliquid_price',args:{message:bytes},gas:180000000000000n,attachedDeposit:0n});
     if(tx.status?.Failure || tx.receipts_outcome.some(r=>r.outcome.status?.Failure)) throw Error('NEAR verification or settlement failed');
-    const accepted = await view('get_oracle_config');
+    let accepted;
+    const finalityDeadline=Date.now()+6000;
+    do {
+        accepted=await view('get_oracle_config');
+        if(BigInt(accepted.next_sequence)===expected+1n) break;
+        await sleep(300);
+    } while(Date.now()<finalityDeadline);
     if(BigInt(accepted.next_sequence)!==expected+1n) throw Error('Quote was not accepted');
     await record({keeperHeartbeatMs:entryReady?Date.now():null,publisherHeartbeatMs:Date.now(),publisherStatus:entryReady?'submitted':'gas_reserve_low',entryReady,sequence:String(expected),transaction:tx.transaction.hash,observedAgeMs:Date.now()-Number(accepted.last_observed_us)/1000,sourceBalanceWei:String(balance)});
 }
