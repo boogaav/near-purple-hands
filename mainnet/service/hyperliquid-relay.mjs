@@ -3,6 +3,7 @@ import {readFile, writeFile, rename} from 'node:fs/promises';
 import {createPublicClient, createWalletClient, defineChain, http, parseAbi} from 'viem';
 import {privateKeyToAccount} from 'viem/accounts';
 import {connect, KeyPair, keyStores} from 'near-api-js';
+import {queryNear} from './rpc.mjs';
 import config from '../config.json' with {type:'json'};
 
 const emitter = '0x1e655b93fbf7f64251b7fae71a325b8260bc1b47';
@@ -29,7 +30,10 @@ const signer = await near.account(config.exchange);
 const permission = (await near.connection.provider.query({request_type:'view_access_key',account_id:config.exchange,public_key:key.getPublicKey().toString(),finality:'final'})).permission?.FunctionCall;
 const methods = ['submit_hyperliquid_price','cancel_open'];
 if (!permission || permission.receiver_id !== config.exchange || permission.method_names.length !== methods.length || !methods.every(m=>permission.method_names.includes(m))) throw Error('Unexpected relay key permissions');
-const view = methodName => signer.viewFunction({contractId:config.exchange,methodName,args:{}});
+const view = async methodName => {
+    const {result}=await queryNear({request_type:'call_function',account_id:config.exchange,method_name:methodName,args_base64:'e30=',finality:'final'});
+    return JSON.parse(Buffer.from(result.result));
+};
 const guardians = ['https://wormhole-v2-mainnet-api.chainlayer.network', 'https://wormhole-v2-mainnet-api.mcf.rocks'];
 const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
 const continuous = process.env.RELAY_CONTINUOUS === 'true';
