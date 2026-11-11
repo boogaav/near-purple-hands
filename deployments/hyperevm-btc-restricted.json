@@ -1,0 +1,11 @@
+{
+  "chainId": 999,
+  "emitter": "0x1e655b93fbf7f64251b7fae71a325b8260bc1b47",
+  "publisher": "0xcD819ecA2c6cC122a9d4dcefdB4427829eA38973",
+  "deploymentTransaction": "0xa2b0e60080b427d83e9748fefbd67141072589f1d39441d736f1b254fa719b21",
+  "firstQuoteTransaction": "0xce7871ccfa84c2e71c4f9179ae774cb633b00f7b2cbf76948bf1fe2d8b91d20b",
+  "nearVerifier": "contract.wormhole_crypto.near",
+  "probeVerificationTransaction": "AR4bRa6qsuLoEBhijpigwhADzkBebCwga5cQghUNGz9T",
+  "probeVerificationNote": "Successful onchain verification of the earlier emitter's sequence 5.",
+  "nearExchangeActivated": false
+}

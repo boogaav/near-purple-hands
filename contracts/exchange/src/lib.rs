@@ -1,4 +1,5 @@
 //! Native NEAR adapter; bounded local/testnet prototype.
+mod hyperliquid;
 mod pyth;
 use near_sdk::{
     assert_one_yocto, env,
@@ -93,7 +94,120 @@ impl Exchange {
             last_verified_us: 0,
         }
     }
+    // Deployment-account-only activation preserves the existing serialized ledger.
+    #[private]
+    pub fn activate_hyperliquid(&mut self, next_sequence: U64) {
+        assert!(
+            self.engine.positions.is_empty(),
+            "Finish existing positions first"
+        );
+        assert!(hyperliquid::config().is_none(), "Already activated");
+        hyperliquid::save(&hyperliquid::Config {
+            next_sequence: next_sequence.0,
+        });
+        self.engine.price = 0;
+        self.engine.price_at = 0;
+        self.last_verified_us = 0;
+    }
+    pub fn submit_hyperliquid_price(&mut self, message: Base64VecU8) -> Promise {
+        let config = hyperliquid::config().expect("Hyperliquid not activated");
+        let quote = hyperliquid::parse(&message.0).unwrap_or_else(|e| env::panic_str(e));
+        assert_eq!(
+            quote.sequence, config.next_sequence,
+            "Deliver quotes in sequence"
+        );
+        Promise::new(hyperliquid::VERIFIER.parse().unwrap())
+            .function_call(
+                "verify_vaa",
+                near_sdk::serde_json::json!({"vaa":hyperliquid::hex(&message.0)})
+                    .to_string()
+                    .into_bytes(),
+                NearToken::from_yoctonear(0),
+                Gas::from_tgas(30),
+            )
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(Gas::from_tgas(100))
+                    .accept_hyperliquid_price(message),
+            )
+    }
+    #[private]
+    pub fn accept_hyperliquid_price(
+        &mut self,
+        message: Base64VecU8,
+        #[callback_result] verified: Result<u32, PromiseError>,
+    ) -> bool {
+        if verified.is_err() {
+            return false;
+        }
+        let mut config = hyperliquid::config().expect("Hyperliquid not activated");
+        let quote = hyperliquid::parse(&message.0).unwrap_or_else(|e| env::panic_str(e));
+        if quote.sequence != config.next_sequence {
+            return false;
+        }
+        assert!(quote.observed_at <= now(), "Future source timestamp");
+        // A missed observation must not let a later exit bypass liquidation.
+        assert!(
+            now() - quote.observed_at <= 15 || self.engine.positions.is_empty(),
+            "Oracle outage with active orders: recovery required"
+        );
+        // Consume historical proofs in sequence only when no position is exposed.
+        if now() - quote.observed_at <= 15 && quote.observed_at >= self.engine.price_at {
+            check(
+                self.engine.publish(
+                    quote.price,
+                    quote.observed_at,
+                    self.engine
+                        .sequence
+                        .checked_add(1)
+                        .expect("Sequence overflow"),
+                    now(),
+                ),
+            );
+            self.last_verified_us = quote.observed_at * 1_000_000;
+            // The pilot has one owner. Every accepted quote processes every position in order.
+            let owners: Vec<String> = self.engine.positions.keys().cloned().collect();
+            for owner in owners {
+                let position = self.engine.positions.get(&owner).unwrap().clone();
+                if position.entry == 0 {
+                    if env::block_height() > position.open.until {
+                        check(self.engine.cancel_open(&owner, env::block_height()));
+                    } else {
+                        let _ =
+                            self.engine
+                                .fill_open(&owner, PILOT_OWNER, now(), env::block_height());
+                    }
+                } else if let Ok(outcome) =
+                    self.engine
+                        .settle(&owner, PILOT_OWNER, now(), env::block_height())
+                {
+                    env::log_str(&format!(
+                        "EVENT_JSON:{}",
+                        near_sdk::serde_json::json!({
+                            "standard":"purple_hands","version":"0.1.0","event":"settled","data":[outcome]
+                        })
+                    ));
+                }
+            }
+            self.event("verified_price");
+        }
+        config.next_sequence = config
+            .next_sequence
+            .checked_add(1)
+            .expect("Sequence overflow");
+        hyperliquid::save(&config);
+        true
+    }
     pub fn get_oracle_config(&self) -> near_sdk::serde_json::Value {
+        if let Some(config) = hyperliquid::config() {
+            return near_sdk::serde_json::json!({
+                "mode":"hyperliquid-wormhole-queued",
+                "next_sequence":config.next_sequence,
+                "max_age_us":15_000_000,
+                "last_observed_us":self.last_verified_us,
+                "manual_price_fallback":false
+            });
+        }
         match &self.verified_oracle {
             Some(c) => near_sdk::serde_json::json!({"mode":"pyth-pro-verified-candidate",
                 "signer":c.signer,"signer_expires_at":c.expires_at,"feed":c.feed,
@@ -104,6 +218,7 @@ impl Exchange {
         }
     }
     pub fn submit_verified_price(&mut self, message: Base64VecU8) {
+        assert!(hyperliquid::config().is_none(), "Hyperliquid oracle active");
         let config = self
             .verified_oracle
             .as_ref()
@@ -207,7 +322,10 @@ impl Exchange {
     }
     #[cfg(any(test, feature = "test-oracle"))]
     pub fn publish_price(&mut self, price: U64, timestamp: u64, sequence: u64) {
-        assert!(self.verified_oracle.is_none(), "Manual prices disabled");
+        assert!(
+            self.verified_oracle.is_none() && hyperliquid::config().is_none(),
+            "Manual prices disabled"
+        );
         assert_eq!(env::predecessor_account_id(), self.oracle, "Only oracle");
         check(self.engine.publish(price.0, timestamp, sequence, now()));
         self.event("price");
@@ -286,10 +404,22 @@ impl Exchange {
             now(),
             env::block_height(),
         ));
+        if hyperliquid::config().is_some() {
+            self.engine
+                .positions
+                .get_mut(owner.as_str())
+                .unwrap()
+                .open
+                .until = env::block_height() + 120;
+        }
         self.event("open_requested");
         id
     }
     pub fn fill_open(&mut self, owner: AccountId) {
+        assert!(
+            hyperliquid::config().is_none(),
+            "Queued execution is automatic"
+        );
         self.require_verified_fresh();
         check(
             self.engine
@@ -310,9 +440,23 @@ impl Exchange {
             now(),
             env::block_height(),
         ));
+        if hyperliquid::config().is_some() {
+            self.engine
+                .positions
+                .get_mut(owner.as_str())
+                .unwrap()
+                .close
+                .as_mut()
+                .unwrap()
+                .until = env::block_height() + 120;
+        }
         self.event("close_requested");
     }
     pub fn settle(&mut self, owner: AccountId) -> Outcome {
+        assert!(
+            hyperliquid::config().is_none(),
+            "Queued execution is automatic"
+        );
         self.require_verified_fresh();
         let o = check(
             self.engine
@@ -339,6 +483,10 @@ impl Exchange {
         U64(*self.withdrawals.get(&owner).unwrap_or(&0))
     }
     fn require_verified_fresh(&self) {
+        if hyperliquid::config().is_some() {
+            check(self.engine.fresh(now()));
+            return;
+        }
         if let Some(config) = &self.verified_oracle {
             config.validate(now()).unwrap_or_else(|e| env::panic_str(e));
             let now_us = env::block_timestamp() / 1000;
@@ -379,6 +527,97 @@ mod tests {
         e.register();
         e
     }
+    #[test]
+    fn hyperliquid_callback_rejects_failed_verification_and_replays() {
+        let mut exchange = setup();
+        let fixture = include_bytes!("hyperliquid-fixture.bin").to_vec();
+        let quote = hyperliquid::parse(&fixture).unwrap();
+        let mut context = VMContextBuilder::new();
+        context
+            .current_account_id("exchange.near".parse().unwrap())
+            .predecessor_account_id("exchange.near".parse().unwrap())
+            .block_timestamp((quote.observed_at + 4) * 1_000_000_000);
+        testing_env!(context.build());
+        hyperliquid::save(&hyperliquid::Config { next_sequence: 0 });
+        assert!(!exchange
+            .accept_hyperliquid_price(Base64VecU8(fixture.clone()), Err(PromiseError::Failed)));
+        assert_eq!(exchange.engine.price, 0);
+        assert_eq!(hyperliquid::config().unwrap().next_sequence, 0);
+        assert!(exchange.accept_hyperliquid_price(Base64VecU8(fixture.clone()), Ok(7)));
+        assert_eq!(exchange.engine.price, 73_806_500_000);
+        assert_eq!(hyperliquid::config().unwrap().next_sequence, 1);
+        assert!(!exchange.accept_hyperliquid_price(Base64VecU8(fixture), Ok(7)));
+        assert!(exchange.engine.invariant());
+    }
+
+    #[test]
+    fn hyperliquid_callback_executes_entry_and_exit_in_sequence() {
+        let mut exchange = setup();
+        exchange.engine.register(PILOT_OWNER).unwrap();
+        exchange.engine.deposit(PILOT_OWNER, 200_000_000).unwrap();
+        exchange
+            .engine
+            .add_liquidity(PILOT_OWNER, 150_000_000)
+            .unwrap();
+        exchange.engine.paused = false;
+        let fixture = include_bytes!("hyperliquid-fixture.bin").to_vec();
+        let quote = hyperliquid::parse(&fixture).unwrap();
+        let base = quote.observed_at;
+        let price = quote.price;
+        exchange
+            .engine
+            .publish(price, base - 2, 1, base - 2)
+            .unwrap();
+        exchange
+            .engine
+            .request_open(
+                PILOT_OWNER,
+                PILOT_OWNER,
+                true,
+                10_000_000,
+                500,
+                price - 100_000_000,
+                price + 100_000_000,
+                base - 1,
+                100,
+            )
+            .unwrap();
+        let mut context = VMContextBuilder::new();
+        context
+            .current_account_id("exchange.near".parse().unwrap())
+            .predecessor_account_id("exchange.near".parse().unwrap())
+            .block_timestamp((base + 4) * 1_000_000_000)
+            .block_height(105);
+        testing_env!(context.build());
+        hyperliquid::save(&hyperliquid::Config { next_sequence: 0 });
+        assert!(exchange.accept_hyperliquid_price(Base64VecU8(fixture.clone()), Ok(7)));
+        assert_eq!(exchange.engine.positions[PILOT_OWNER].entry, price);
+        exchange
+            .engine
+            .request_close(
+                PILOT_OWNER,
+                PILOT_OWNER,
+                price - 100_000_000,
+                price + 100_000_000,
+                base + 5,
+                106,
+            )
+            .unwrap();
+        // Callback-only fixture mutation tests state transitions after successful verification.
+        let mut next = fixture;
+        let body = 6 + usize::from(next[5]) * 66;
+        next[body..body + 4].copy_from_slice(&((base + 6) as u32).to_be_bytes());
+        next[body + 42..body + 50].copy_from_slice(&1u64.to_be_bytes());
+        next[body + 51 + 184..body + 51 + 192].copy_from_slice(&(base + 6).to_be_bytes());
+        context
+            .block_timestamp((base + 10) * 1_000_000_000)
+            .block_height(110);
+        testing_env!(context.build());
+        assert!(exchange.accept_hyperliquid_price(Base64VecU8(next), Ok(7)));
+        assert!(exchange.engine.positions.is_empty());
+        assert!(exchange.engine.invariant());
+    }
+
     #[test]
     fn owner_pilot_accepts_deposits_past_old_cap_and_refunds_foreign_wallets() {
         let mut exchange = setup();

@@ -10,14 +10,17 @@ interface IWormholeCore {
 /// Publishes the raw HyperCore BTC book observed during the source transaction.
 contract BtcQuoteEmitter {
     IWormholeCore public immutable core;
+    address public immutable publisher;
     address private constant BOOK = address(0x080e);
 
     constructor(IWormholeCore verifiedCore) {
         require(block.chainid == 999 && verifiedCore.chainId() == 47, "Wrong network");
         core = verifiedCore;
+        publisher = msg.sender;
     }
 
     function capture() external payable returns (uint64 sequence) {
+        require(msg.sender == publisher, "Only publisher");
         require(msg.value == core.messageFee(), "Incorrect message fee");
         (bool ok, bytes memory result) = BOOK.staticcall(abi.encode(uint32(0)));
         require(ok && result.length == 64, "BTC book unavailable");
