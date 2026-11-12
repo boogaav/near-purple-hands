@@ -1,5 +1,5 @@
 // The contract consumes every source sequence and executes queued positions automatically.
-import {readFile, writeFile, rename} from 'node:fs/promises';
+import {readFile, writeFile, rename, appendFile} from 'node:fs/promises';
 import {createPublicClient, createWalletClient, defineChain, http, parseAbi} from 'viem';
 import {privateKeyToAccount} from 'viem/accounts';
 import {connect, KeyPair, keyStores} from 'near-api-js';
@@ -105,6 +105,8 @@ async function step() {
     stage = 'near_submit';
     const tx = await signer.functionCall({contractId:config.exchange,methodName:'submit_hyperliquid_price',args:{message:bytes},gas:180000000000000n,attachedDeposit:0n});
     if(tx.status?.Failure || tx.receipts_outcome.some(r=>r.outcome.status?.Failure)) throw Error('NEAR verification or settlement failed');
+    // Durable receipt queue: the status indexer verifies FINAL before publishing results.
+    await appendFile('/data/settlement-transactions.jsonl',JSON.stringify({hash:tx.transaction.hash})+'\n');
     let accepted;
     const finalityDeadline=Date.now()+6000;
     do {
