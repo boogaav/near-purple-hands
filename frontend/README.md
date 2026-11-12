@@ -1,6 +1,6 @@
 # Current NEAR interface source
 
-Source snapshot from the shared Yellowhands frontend at commit `0c1eb9eb6df9fab130de5724bb32b5475f0afc0b`. `current/` contains the NEAR adapter, Meteor permissions, dashboard, live chart, finalized result card, progress road and their local module dependencies. No credentials or local wallet state are included.
+Source snapshot from the shared Yellowhands frontend at commit `10bb0913488a53493faebf47eaf7abf54b02fc8d`. `current/` contains the NEAR adapter, Meteor permissions, dashboard, live chart, finalized result card, progress road and their local module dependencies. No credentials or local wallet state are included.
 
 This is an integration source snapshot, not an independent build of the entire shared multi-chain website. The existing runnable NEAR frontend is in `mainnet/yellow/`; its Vite configuration and the root package dependencies are included. The offline demo and testnet UI remain runnable using the root README commands.
 

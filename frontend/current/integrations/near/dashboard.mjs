@@ -1,3 +1,6 @@
+import {initAnalytics} from '../../analytics/browser.mjs';
+import {initExternalAnalytics} from '../../analytics/external.mjs';
+import {nearTelemetry} from './telemetry.mjs';
 import {mountChemistryPanel} from '../../public/yh-chemistry-panel.js';
 import {nearChemistry} from './chemistry.mjs';
 import {mountNearResult} from './result.mjs';
@@ -129,6 +132,9 @@ const view=$('#p-dialog-body'),overlay=$('#p-overlay');
 const modal=(title,body)=>{overlay.hidden=false;view.innerHTML='<h2>'+escape(title)+'</h2>'+body;};
 const close=()=>{if(review?.method==='request_open'&&!busy)chemistry?.cancel();overlay.hidden=true;view.replaceChildren();review=null;};
 const expected=sessionStorage.getItem(nearPreference);
+const telemetry=nearTelemetry();
+initAnalytics(()=>accountConfirmed?expected:null,{syncWallet:false});
+const external=initExternalAnalytics(root);external.stopForAccount();
 const controller=new AbortController();
 let walletUSDC=null,tradingEnabled=false,liveMarket=null,orderAttempt=null;
 const permissionPendingKey='yellowhands:near:permission-pending:'+scope(expected);
@@ -220,14 +226,14 @@ async function refresh(){
   try{await identity();
     if(walletUSDC===null){const amount=await walletBalance(expected,controller.signal);await identity();walletUSDC=amount;render();}
     try{const sdk=await import(METEOR_MODULE_URL);tradingEnabled=!!await sdk.tradingPermission(expected);}catch{tradingEnabled=false;}
-    if(permissionPending&&(tradingEnabled||Date.now()-permissionPending.started>90000)){permissionPending=null;sessionStorage.removeItem(permissionPendingKey);if(tradingEnabled)message='One-click trading enabled';else message='Approval is taking longer. Check Meteor; we’ll keep checking here.';}
+    if(permissionPending&&(tradingEnabled||Date.now()-permissionPending.started>90000)){const confirmedAttempt=permissionPending.attempt;permissionPending=null;sessionStorage.removeItem(permissionPendingKey);if(tradingEnabled){if(confirmedAttempt)telemetry.stage(confirmedAttempt,'resolved');message='One-click trading enabled';}else message='Approval is taking longer. Check Meteor; we’ll keep checking here.';}
     const next=await snapshot(expected,controller.signal);await identity();walletUSDC=next.wallet;try{
       const res=await fetch('/api/near/status?owner='+encodeURIComponent(expected),{signal:controller.signal,cache:'no-store'});
       if(res.ok)next.service=verifiedService(next,await res.json());
     }catch{}
     await identity();if(orderAttempt?.phase==='accepted'&&((orderAttempt.method==='request_open'&&next.position?.entry)||(orderAttempt.method==='request_close'&&!next.position)))orderAttempt=null;
     if(orderAttempt?.method==='request_open'&&orderAttempt.phase==='accepted'&&snapshotValue?.position&&!next.position)orderAttempt={...orderAttempt,phase:'failed'};
-    snapshotValue=next;chemistry?.sync(next);resultUI?.update(next);if(message==='Unable to verify NEAR state. Retry.')message='';render();}
+    snapshotValue=next;void telemetry.reconcile(next);chemistry?.sync(next);resultUI?.update(next);if(message==='Unable to verify NEAR state. Retry.')message='';render();}
   catch(e){if(controller.signal.aborted)return;
     if(/account changed|select a NEAR mainnet account/.test(e.message)){leave();return;}
     snapshotValue=null;$('#near-pool').replaceChildren();$('#near-actions').replaceChildren();close();message='Unable to verify NEAR state. Retry.';render();}
@@ -247,6 +253,10 @@ const methods={
  process_remove:['Claim removal','Credits your exchange balance.'],request_close:['Close position','Request settlement within the displayed BTC price limits.'],
  request_open:['Open position','Margin $10 · entry fee $0.10 · execution escrow $0.14.'],cancel_open:['Cancel expired entry','Return unused margin to your exchange balance.']};
 async function prepare(method,long){
+  const attempt=telemetry.begin(method,expected,long);
+  try{return await prepareAction(method,long,attempt);}catch(error){telemetry.failed(attempt,error);throw error;}
+}
+async function prepareAction(method,long,attempt){
   const s=snapshotValue;if(!s||s.owner!==cfg.owner||busy)throw Error('This action is unavailable.');
   const amount=['ft_transfer_call','withdraw','add_liquidity'].includes(method);
   const args={},receiver=['storage_deposit','ft_transfer_call'].includes(method)?cfg.token:cfg.exchange;
@@ -262,13 +272,13 @@ async function prepare(method,long){
   const limit=method==='ft_transfer_call'?await depositLimit(s,controller.signal):null;
   if(method==='ft_transfer_call')await identity();
   if(limit===0n)throw Error('No USDC can be loaded at this time.');
-  review={method,args,receiver,deposit,amount,max:amount?(limit??BigInt(s.account?.balance??0)):null,position:s.position?.id};
+  review={attempt,method,args,receiver,deposit,amount,max:amount?(limit??BigInt(s.account?.balance??0)):null,position:s.position?.id};
   if(tradingEnabled&&tradingMethods.includes(method)){review.oneClick=true;await sign();return;}
   modal(methods[method][0],'<p>'+methods[method][1]+'</p>'+(amount?'<p>'+(method==='ft_transfer_call'?'Available in wallet':'Available trading balance')+' · <strong>'+money(method==='ft_transfer_call'?s.wallet:s.account?.balance??0)+'</strong></p>'+(limit!==null?'<p>Maximum load · '+money(limit)+'</p>':'')+'<label>USDC amount <input id="near-amount" inputmode="decimal"></label>'+btn('amount-max','Max'):'')+(args.min_price?'<p>BTC bounds · '+money(args.min_price)+' – '+money(args.max_price)+'</p>':'')+'<p>Attached '+escape(deposit)+' yoctoNEAR · plus network gas</p>'+btn('sign','Confirm in Meteor'));
 }
 async function sign(){
   if(!review||busy)return;
-  const tx=review,s=snapshotValue;if(tx.amount){const n=parseAmount($('#near-amount').value);if(n>(tx.method==='ft_transfer_call'?s.wallet:BigInt(s.account.balance)))throw Error('Amount exceeds available balance.');tx.args.amount=n.toString();}
+  const tx=review,s=snapshotValue;telemetry.stage(tx.attempt,'reviewed');if(tx.amount){try{const n=parseAmount($('#near-amount').value);if(n>(tx.method==='ft_transfer_call'?s.wallet:BigInt(s.account.balance)))throw Error('Amount exceeds available balance.');tx.args.amount=n.toString();}catch(error){telemetry.failed(tx.attempt,error);throw error;}}
   busy=true;if(['request_open','request_close'].includes(tx.method))orderAttempt={method:tx.method,phase:'checking',started:Date.now(),wallet:!tx.oneClick};close();render();const record={id:crypto.randomUUID(),method:tx.method,status:tx.oneClick?'Submitting trade':'Awaiting Meteor',position:tx.position};
   try{await identity();const latest=await snapshot(expected,controller.signal);
     if(tx.method==='request_open'){const h=await fetch('/api/near/status?owner='+encodeURIComponent(expected),{cache:'no-store',signal:controller.signal});if(!h.ok)throw Error('Keeper unavailable');latest.service=verifiedService(latest,await h.json());if(entryBlock(latest))throw Error(entryBlock(latest));}
@@ -280,8 +290,8 @@ async function sign(){
     if(tx.method!=='ft_transfer_call'&&latest.position?.id!==tx.position)throw Error('Position changed. Review again.');
     const sdk=await import(METEOR_MODULE_URL);await identity();
     if(orderAttempt){orderAttempt.phase='sending';renderOrderProgress();}
-    writeRecord(record);record.submitted=true;const outcome=await sdk.signNear(expected,tx.receiver,tx.method,tx.args,tx.deposit,!!tx.oneClick);
-    record.hash=outcome?.transaction?.hash;record.status='Confirmation unknown';
+    telemetry.stage(tx.attempt,'signing');writeRecord(record);record.submitted=true;const outcome=await sdk.signNear(expected,tx.receiver,tx.method,tx.args,tx.deposit,!!tx.oneClick);
+    telemetry.outcome(tx.attempt,outcome);record.hash=outcome?.transaction?.hash;record.status='Confirmation unknown';
     if(outcome?.status?.Failure||outcome?.receipts_outcome?.some(x=>x.outcome.status?.Failure))record.status='Transaction failed';
     else if(outcome?.status&&Object.hasOwn(outcome.status,'SuccessValue')){
       record.status='Executed';if(tx.method==='ft_transfer_call'){const accepted=BigInt(JSON.parse(atob(outcome.status.SuccessValue)));record.status=accepted===0n?'Deposit refunded · '+money(tx.args.amount)+' returned to your wallet':'Loaded '+money(accepted)+' of '+money(tx.args.amount);}
@@ -289,11 +299,11 @@ async function sign(){
     if(orderAttempt)orderAttempt.phase=record.status==='Executed'?'accepted':record.status==='Transaction failed'?'failed':'unknown';
     if(tx.method==='cancel_open'&&record.status==='Executed'||tx.method==='request_open'&&record.status==='Transaction failed')chemistry?.cancel();
     writeRecord(record);await identity();message=record.status;
-  }catch(e){if(tx.method==='request_open'&&(!record.submitted||/cancel|reject/i.test(e.message)))chemistry?.cancel();if(orderAttempt)orderAttempt.phase=!record.submitted||/cancel|reject/i.test(e.message)?'failed':'unknown';if(record.submitted){record.status='Check Meteor activity before retrying';writeRecord(record);}throw e;}
+  }catch(e){if(record.submitted&&!/cancel|reject/i.test(e.message))telemetry.stage(tx.attempt,'error',{code:'unresolved'});else telemetry.failed(tx.attempt,e);if(tx.method==='request_open'&&(!record.submitted||/cancel|reject/i.test(e.message)))chemistry?.cancel();if(orderAttempt)orderAttempt.phase=!record.submitted||/cancel|reject/i.test(e.message)?'failed':'unknown';if(record.submitted){record.status='Check Meteor activity before retrying';writeRecord(record);}throw e;}
   finally{busy=false;await refresh();}
 }
 async function start(){
-  const {selector}=await identity();accountConfirmed=true;
+  const {selector}=await identity();accountConfirmed=true;telemetry.connected(expected);
   subscription=selector.store.observable.subscribe(state=>{const active=state.accounts.find(a=>a.active)?.accountId;if(active&&active!==expected)leave();});
   root.dataset.owned='true';root.dataset.connected='true';initHeaderTagline(root);initBrandTheme(root);initDesktopLayout(root);initTradeHands(root);tidyFooter(root);
   const wordmark=$('.p-brandtext');
@@ -335,18 +345,18 @@ root.addEventListener('click',async event=>{
     else if(key==='topup'&&expected===cfg.owner)modal('Top up wallet','<p>Send native USDC on NEAR mainnet to</p><strong>'+escape(expected)+'</strong><p>Keep NEAR in your wallet for gas.</p>');
     else if(key==='trading-settings')modal('One-click trading',tradingEnabled?'<p>UP, DOWN and EXIT submit immediately. Deposits, withdrawals and liquidity changes still require wallet confirmation.</p><p>This permission has no automatic expiry or trading-loss budget. It can trade the funds loaded into this exchange.</p>'+btn('revoke-trading','Revoke in Meteor'):'<p>Approve once in Meteor. Then UP, DOWN and EXIT submit without another review.</p><p>Allows opening, closing and cancelling trades only. Cannot withdraw funds. Trades can lose your loaded balance; the gas allowance is not a trading budget. No automatic expiry.</p>'+btn('enable-trading','Approve in Meteor'));
     else if(key==='enable-trading'||key==='revoke-trading'){
-      if(busy)return;busy=true;close();render();
+      if(busy)return;const approvalAttempt=telemetry.begin(key==='enable-trading'?'enable':'revoke',expected);busy=true;close();render();
       try{const sdk=await import(METEOR_MODULE_URL);await identity();
         if(key==='enable-trading'){
-          const permission=await sdk.enableTrading(expected);
+          telemetry.stage(approvalAttempt,'signing');const permission=await sdk.enableTrading(expected);telemetry.stage(approvalAttempt,permission?.pending?'submitted':'resolved');
           if(permission?.pending){
-            permissionPending={started:Date.now(),reloaded:true};sessionStorage.setItem(permissionPendingKey,JSON.stringify(permissionPending));
+            permissionPending={started:Date.now(),reloaded:true,attempt:approvalAttempt};sessionStorage.setItem(permissionPendingKey,JSON.stringify(permissionPending));
             message='Confirming approval…';render();location.reload();return;
           }
           permissionPending=null;sessionStorage.removeItem(permissionPendingKey);tradingEnabled=true;message='One-click trading enabled';
         }
-        else{await sdk.revokeTrading(expected);tradingEnabled=false;message='Trading permission revoked';}
-      }finally{busy=false;await refresh();}
+        else{const revoked=await sdk.revokeTrading(expected);telemetry.outcome(approvalAttempt,revoked);tradingEnabled=false;message='Trading permission revoked';}
+      }catch(error){telemetry.failed(approvalAttempt,error);throw error;}finally{busy=false;await refresh();}
     }
     else if(key==='amount-max'&&review?.amount){$('#near-amount').value=(Number(review.max)/1e6).toFixed(6).replace(/\.?0+$/,'');}
     else if(key==='sign')await sign();
