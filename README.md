@@ -4,7 +4,18 @@ The wallet frontend, live trusted BTC oracle and automatic keeper are implemente
 
 # NEAR Purple Hands
 
-A native Rust/NEAR fork of Purple Hands’ V5 trading design. Traders open capped BTC positions against a fully reserved LP pool. The browser product is a **local demo**. Native contracts are now deployed to **NEAR testnet**, using a mock token and separate fixture accounts. No domain cutover, real USDC, bridge or mainnet transaction is configured.
+A native Rust/NEAR implementation of Yellowhands trading: capped BTC positions against a reserved LP pool. This public hackathon repository contains contracts, accounting engine, oracle relay, keeper/status services, deployment tooling, tests, local demo and NEAR interfaces.
+
+## Current pilot
+
+- Live interface: [yellowhands.wtf/near](https://yellowhands.wtf/near).
+- Native NEAR settlement using real USDC; the deployed pilot uses $10 margin × 500 leverage. This is an unaudited, restricted pilot.
+- [Hyperliquid relay and verified settlement architecture](docs/NEAR-HYPERLIQUID-PILOT.md). Live chart estimates and finalized onchain settlement are distinct.
+- [Current interface source snapshot](frontend/README.md), plus the runnable standalone interface in `mainnet/yellow/`.
+- Backend services are in `mainnet/service/`; native contracts are in `contracts/` and shared accounting in `crates/engine/`.
+- Historical deployment manifests and testnet sections describe specific earlier versions; they are not live health reports. Private keys, API credentials and runtime state are deliberately excluded.
+
+The local demo below uses simulated funds. Testnet deployments use mock tokens.
 
 ![Purple Hands local demo](docs/local-demo.png)
 
